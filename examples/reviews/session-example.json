@@ -1,0 +1,240 @@
+{
+  "id": "review-2024-01-15-webapp",
+  "config": {
+    "pillars": [
+      "security",
+      "reliability",
+      "performance-efficiency",
+      "cost-optimization"
+    ],
+    "focusAreas": [
+      "web-application",
+      "database",
+      "compute"
+    ],
+    "learningMode": true,
+    "customQuestions": []
+  },
+  "startTime": "2024-01-15T10:30:00Z",
+  "lastUpdated": "2024-01-15T11:45:00Z",
+  "progress": {
+    "totalQuestions": 24,
+    "answeredQuestions": 24,
+    "skippedQuestions": 0,
+    "completionPercentage": 100
+  },
+  "answers": {
+    "sec-1": {
+      "questionId": "sec-1",
+      "question": "How do you protect your data at rest?",
+      "response": "We use AWS KMS for encryption of all data at rest, including RDS databases, S3 buckets, and EBS volumes.",
+      "evidence": [
+        "terraform/rds.tf - KMS encryption enabled",
+        "terraform/s3.tf - Default encryption configured",
+        "terraform/ec2.tf - EBS encryption enabled"
+      ],
+      "timestamp": "2024-01-15T10:35:00Z",
+      "alignment": "aligned",
+      "notes": "Good implementation of encryption at rest across all storage services."
+    },
+    "sec-2": {
+      "questionId": "sec-2",
+      "question": "How do you protect your data in transit?",
+      "response": "All external traffic uses TLS 1.2+. Internal traffic between services uses VPC endpoints where possible.",
+      "evidence": [
+        "terraform/alb.tf - HTTPS listener with TLS 1.2 policy",
+        "terraform/vpc.tf - VPC endpoints for S3 and DynamoDB"
+      ],
+      "timestamp": "2024-01-15T10:40:00Z",
+      "alignment": "partial",
+      "notes": "Good external encryption. Consider encrypting internal service-to-service communication."
+    },
+    "sec-3": {
+      "questionId": "sec-3",
+      "question": "How do you manage access to AWS resources?",
+      "response": "We use IAM roles with least privilege policies. No long-term credentials are used.",
+      "evidence": [
+        "terraform/iam.tf - Role-based access with specific policies"
+      ],
+      "timestamp": "2024-01-15T10:45:00Z",
+      "alignment": "not-aligned",
+      "notes": "IAM policies are too broad. Several roles have wildcard permissions that should be restricted."
+    },
+    "rel-1": {
+      "questionId": "rel-1",
+      "question": "How do you design your workload to withstand component failures?",
+      "response": "Application is deployed across multiple availability zones with auto-scaling.",
+      "evidence": [
+        "terraform/asg.tf - Auto Scaling Group spans 3 AZs",
+        "terraform/alb.tf - Application Load Balancer with multi-AZ"
+      ],
+      "timestamp": "2024-01-15T10:50:00Z",
+      "alignment": "aligned",
+      "notes": "Excellent multi-AZ architecture for high availability."
+    },
+    "rel-2": {
+      "questionId": "rel-2",
+      "question": "How do you back up data?",
+      "response": "RDS automated backups are enabled with 7-day retention. No backup for application state.",
+      "evidence": [
+        "terraform/rds.tf - Automated backups enabled"
+      ],
+      "timestamp": "2024-01-15T10:55:00Z",
+      "alignment": "partial",
+      "notes": "Database backups are good. Consider backing up application configuration and state stored in S3."
+    },
+    "perf-1": {
+      "questionId": "perf-1",
+      "question": "How do you select appropriate resource types and sizes?",
+      "response": "Using t3.medium instances based on initial estimates. No performance testing done yet.",
+      "evidence": [
+        "terraform/ec2.tf - t3.medium instance type"
+      ],
+      "timestamp": "2024-01-15T11:00:00Z",
+      "alignment": "not-aligned",
+      "notes": "Instance sizing should be based on actual workload testing, not estimates."
+    },
+    "perf-2": {
+      "questionId": "perf-2",
+      "question": "How do you use caching to improve performance?",
+      "response": "CloudFront CDN for static assets. ElastiCache Redis for session storage and database query caching.",
+      "evidence": [
+        "terraform/cloudfront.tf - CDN distribution",
+        "terraform/elasticache.tf - Redis cluster"
+      ],
+      "timestamp": "2024-01-15T11:05:00Z",
+      "alignment": "aligned",
+      "notes": "Good multi-layer caching strategy."
+    },
+    "cost-1": {
+      "questionId": "cost-1",
+      "question": "How do you govern usage?",
+      "response": "AWS Budgets configured with alerts. Cost allocation tags applied to all resources.",
+      "evidence": [
+        "terraform/budgets.tf - Budget alerts configured",
+        "terraform/tags.tf - Tagging strategy defined"
+      ],
+      "timestamp": "2024-01-15T11:10:00Z",
+      "alignment": "aligned",
+      "notes": "Good cost governance practices in place."
+    },
+    "cost-2": {
+      "questionId": "cost-2",
+      "question": "How do you monitor usage and cost?",
+      "response": "CloudWatch dashboards for resource utilization. Cost Explorer for cost analysis.",
+      "evidence": [
+        "terraform/cloudwatch.tf - Custom dashboards"
+      ],
+      "timestamp": "2024-01-15T11:15:00Z",
+      "alignment": "aligned",
+      "notes": "Good monitoring setup for cost optimization."
+    },
+    "cost-3": {
+      "questionId": "cost-3",
+      "question": "How do you decommission resources?",
+      "response": "Manual process to identify and remove unused resources quarterly.",
+      "evidence": [],
+      "timestamp": "2024-01-15T11:20:00Z",
+      "alignment": "partial",
+      "notes": "Consider automating resource cleanup with AWS Config rules or Lambda functions."
+    }
+  },
+  "skippedQuestions": [],
+  "issues": [
+    {
+      "id": "issue-1",
+      "pillar": "security",
+      "questionId": "sec-3",
+      "description": "IAM policies contain wildcard permissions that violate least privilege principle",
+      "resource": {
+        "type": "AWS::IAM::Role",
+        "name": "app-execution-role",
+        "file": "terraform/iam.tf",
+        "line": 15
+      },
+      "riskLevel": "high",
+      "impact": "Potential for privilege escalation and unauthorized access to AWS resources",
+      "likelihood": "medium",
+      "remediationEffort": "medium"
+    },
+    {
+      "id": "issue-2",
+      "pillar": "security",
+      "questionId": "sec-2",
+      "description": "Internal service-to-service communication not encrypted",
+      "riskLevel": "medium",
+      "impact": "Potential for data interception within VPC",
+      "likelihood": "low",
+      "remediationEffort": "high"
+    },
+    {
+      "id": "issue-3",
+      "pillar": "reliability",
+      "questionId": "rel-2",
+      "description": "Application state and configuration not backed up",
+      "riskLevel": "medium",
+      "impact": "Potential data loss for application configuration",
+      "likelihood": "low",
+      "remediationEffort": "low"
+    },
+    {
+      "id": "issue-4",
+      "pillar": "performance-efficiency",
+      "questionId": "perf-1",
+      "description": "Instance sizing based on estimates rather than performance testing",
+      "riskLevel": "medium",
+      "impact": "Potential for over-provisioning (cost) or under-provisioning (performance)",
+      "likelihood": "high",
+      "remediationEffort": "medium"
+    },
+    {
+      "id": "issue-5",
+      "pillar": "cost-optimization",
+      "questionId": "cost-3",
+      "description": "Manual resource decommissioning process is inefficient",
+      "riskLevel": "low",
+      "impact": "Unused resources may accumulate, increasing costs",
+      "likelihood": "medium",
+      "remediationEffort": "low"
+    }
+  ],
+  "documentationGaps": [
+    {
+      "questionId": "sec-3",
+      "pillar": "security",
+      "missingInformation": [
+        "IAM policy review process",
+        "Least privilege implementation guidelines",
+        "Access review schedule"
+      ],
+      "priority": "high"
+    },
+    {
+      "questionId": "perf-1",
+      "pillar": "performance-efficiency",
+      "missingInformation": [
+        "Performance testing methodology",
+        "Load testing results",
+        "Instance sizing decision matrix"
+      ],
+      "priority": "high"
+    },
+    {
+      "questionId": "rel-2",
+      "pillar": "reliability",
+      "missingInformation": [
+        "Backup and recovery procedures",
+        "RTO and RPO requirements",
+        "Disaster recovery plan"
+      ],
+      "priority": "medium"
+    }
+  ],
+  "metadata": {
+    "version": "1.0.0",
+    "powerVersion": "1.0.0",
+    "assessmentType": "guided-review",
+    "projectName": "E-Commerce Web Application",
+    "environment": "production"
+  }
+}

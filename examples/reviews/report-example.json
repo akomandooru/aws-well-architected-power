@@ -1,0 +1,464 @@
+{
+  "reportMetadata": {
+    "reportId": "report-2024-01-15-webapp",
+    "sessionId": "review-2024-01-15-webapp",
+    "generatedAt": "2024-01-15T11:45:00Z",
+    "powerVersion": "1.0.0",
+    "reportVersion": "1.0.0",
+    "reportFormat": "json"
+  },
+  "projectInfo": {
+    "name": "E-Commerce Web Application",
+    "environment": "production",
+    "reviewDate": "2024-01-15",
+    "reviewer": "Development Team"
+  },
+  "executiveSummary": {
+    "totalQuestions": 24,
+    "questionsAnswered": 24,
+    "completionPercentage": 100,
+    "totalIssues": 5,
+    "issuesByRisk": {
+      "high": 1,
+      "medium": 3,
+      "low": 1
+    },
+    "documentationGaps": 3,
+    "pillarsAssessed": [
+      "security",
+      "reliability",
+      "performance-efficiency",
+      "cost-optimization"
+    ]
+  },
+  "pillarScores": [
+    {
+      "pillar": "security",
+      "score": 75,
+      "maxScore": 100,
+      "issueCount": 2,
+      "highRiskCount": 1,
+      "status": "needs-improvement",
+      "summary": "Good foundational practices with encryption, but critical IAM policy gaps identified"
+    },
+    {
+      "pillar": "reliability",
+      "score": 85,
+      "maxScore": 100,
+      "issueCount": 1,
+      "highRiskCount": 0,
+      "status": "good",
+      "summary": "Strong multi-AZ architecture with minor backup coverage gaps"
+    },
+    {
+      "pillar": "performance-efficiency",
+      "score": 70,
+      "maxScore": 100,
+      "issueCount": 1,
+      "highRiskCount": 0,
+      "status": "needs-improvement",
+      "summary": "Good caching implementation but lacks data-driven resource sizing"
+    },
+    {
+      "pillar": "cost-optimization",
+      "score": 90,
+      "maxScore": 100,
+      "issueCount": 1,
+      "highRiskCount": 0,
+      "status": "good",
+      "summary": "Strong cost governance and monitoring practices"
+    }
+  ],
+  "issues": [
+    {
+      "id": "issue-1",
+      "pillar": "security",
+      "questionId": "sec-3",
+      "title": "IAM Policies Contain Wildcard Permissions",
+      "description": "IAM policies contain wildcard permissions that violate the least privilege principle",
+      "riskLevel": "high",
+      "riskAssessment": {
+        "impact": "Potential for privilege escalation and unauthorized access to AWS resources",
+        "likelihood": "medium",
+        "remediationEffort": "medium"
+      },
+      "resource": {
+        "type": "AWS::IAM::Role",
+        "name": "app-execution-role",
+        "location": {
+          "file": "terraform/iam.tf",
+          "line": 15
+        }
+      },
+      "remediation": {
+        "steps": [
+          "Review all IAM policies and identify wildcard permissions",
+          "Replace wildcards with specific resource ARNs",
+          "Implement separate roles for different application functions",
+          "Use IAM Access Analyzer to validate least privilege",
+          "Establish regular IAM policy review process"
+        ],
+        "priority": "critical",
+        "estimatedEffort": "2-3 days",
+        "owner": "Security Team"
+      },
+      "references": [
+        {
+          "title": "IAM Best Practices",
+          "url": "https://docs.aws.amazon.com/IAM/latest/UserGuide/best-practices.html"
+        },
+        {
+          "title": "Least Privilege Principle",
+          "url": "https://docs.aws.amazon.com/wellarchitected/latest/security-pillar/permissions-management.html"
+        }
+      ]
+    },
+    {
+      "id": "issue-2",
+      "pillar": "security",
+      "questionId": "sec-2",
+      "title": "Internal Service Communication Not Encrypted",
+      "description": "Internal service-to-service communication within the VPC is not encrypted",
+      "riskLevel": "medium",
+      "riskAssessment": {
+        "impact": "Potential for data interception within VPC",
+        "likelihood": "low",
+        "remediationEffort": "high"
+      },
+      "remediation": {
+        "steps": [
+          "Implement TLS for internal service communication",
+          "Use AWS Certificate Manager for certificate management",
+          "Configure application load balancers for internal services with HTTPS",
+          "Consider AWS App Mesh for service mesh with automatic TLS"
+        ],
+        "priority": "medium",
+        "estimatedEffort": "2-3 weeks",
+        "owner": "Engineering Team"
+      },
+      "references": [
+        {
+          "title": "Data Protection in Transit",
+          "url": "https://docs.aws.amazon.com/wellarchitected/latest/security-pillar/protecting-data-in-transit.html"
+        }
+      ]
+    },
+    {
+      "id": "issue-3",
+      "pillar": "reliability",
+      "questionId": "rel-2",
+      "title": "Application State Not Backed Up",
+      "description": "Application configuration and state stored in S3 are not included in backup strategy",
+      "riskLevel": "medium",
+      "riskAssessment": {
+        "impact": "Potential data loss for application configuration",
+        "likelihood": "low",
+        "remediationEffort": "low"
+      },
+      "remediation": {
+        "steps": [
+          "Enable S3 versioning for configuration buckets",
+          "Configure S3 replication to another region",
+          "Document backup and restore procedures",
+          "Define RTO and RPO requirements",
+          "Test recovery procedures regularly"
+        ],
+        "priority": "high",
+        "estimatedEffort": "3-5 days",
+        "owner": "DevOps Team"
+      },
+      "references": [
+        {
+          "title": "Backup and Restore",
+          "url": "https://docs.aws.amazon.com/wellarchitected/latest/reliability-pillar/back-up-data.html"
+        }
+      ]
+    },
+    {
+      "id": "issue-4",
+      "pillar": "performance-efficiency",
+      "questionId": "perf-1",
+      "title": "Instance Sizing Based on Estimates",
+      "description": "EC2 instance sizing is based on initial estimates rather than performance testing and actual workload analysis",
+      "riskLevel": "medium",
+      "riskAssessment": {
+        "impact": "Potential for over-provisioning (increased cost) or under-provisioning (poor performance)",
+        "likelihood": "high",
+        "remediationEffort": "medium"
+      },
+      "remediation": {
+        "steps": [
+          "Conduct load testing to determine actual resource requirements",
+          "Monitor CPU, memory, and network utilization under realistic load",
+          "Use AWS Compute Optimizer recommendations",
+          "Implement auto-scaling based on performance metrics",
+          "Document instance sizing decisions and rationale"
+        ],
+        "priority": "high",
+        "estimatedEffort": "1-2 weeks",
+        "owner": "Engineering Team"
+      },
+      "references": [
+        {
+          "title": "Selection and Configuration",
+          "url": "https://docs.aws.amazon.com/wellarchitected/latest/performance-efficiency-pillar/selection.html"
+        }
+      ]
+    },
+    {
+      "id": "issue-5",
+      "pillar": "cost-optimization",
+      "questionId": "cost-3",
+      "title": "Manual Resource Decommissioning",
+      "description": "Resource decommissioning relies on manual quarterly reviews, which is inefficient and may miss unused resources",
+      "riskLevel": "low",
+      "riskAssessment": {
+        "impact": "Unused resources may accumulate, increasing costs",
+        "likelihood": "medium",
+        "remediationEffort": "low"
+      },
+      "remediation": {
+        "steps": [
+          "Implement AWS Config rules to identify unused resources",
+          "Create Lambda functions to automatically tag resources for deletion",
+          "Use AWS Trusted Advisor recommendations",
+          "Set up automated notifications for idle resources",
+          "Establish automated cleanup policies for non-production environments"
+        ],
+        "priority": "low",
+        "estimatedEffort": "1 week",
+        "owner": "DevOps Team"
+      },
+      "references": [
+        {
+          "title": "Manage Demand and Supply Resources",
+          "url": "https://docs.aws.amazon.com/wellarchitected/latest/cost-optimization-pillar/manage-demand-and-supply-resources.html"
+        }
+      ]
+    }
+  ],
+  "documentationGaps": [
+    {
+      "id": "gap-1",
+      "pillar": "security",
+      "questionId": "sec-3",
+      "title": "IAM Policy Management Documentation",
+      "missingInformation": [
+        "IAM policy review process and schedule",
+        "Least privilege implementation guidelines",
+        "Access review procedures and frequency",
+        "Policy approval workflow"
+      ],
+      "priority": "high",
+      "recommendedAction": "Create security operations runbook documenting IAM management procedures",
+      "owner": "Security Team"
+    },
+    {
+      "id": "gap-2",
+      "pillar": "performance-efficiency",
+      "questionId": "perf-1",
+      "title": "Resource Sizing Documentation",
+      "missingInformation": [
+        "Performance testing methodology",
+        "Load testing results and analysis",
+        "Instance sizing decision matrix",
+        "Performance benchmarks and targets"
+      ],
+      "priority": "high",
+      "recommendedAction": "Document performance testing procedures and maintain sizing decision log",
+      "owner": "Engineering Team"
+    },
+    {
+      "id": "gap-3",
+      "pillar": "reliability",
+      "questionId": "rel-2",
+      "title": "Backup and Recovery Documentation",
+      "missingInformation": [
+        "Backup and recovery procedures",
+        "RTO (Recovery Time Objective) and RPO (Recovery Point Objective) requirements",
+        "Disaster recovery plan",
+        "Recovery testing schedule"
+      ],
+      "priority": "medium",
+      "recommendedAction": "Create disaster recovery runbook with documented RTO/RPO targets",
+      "owner": "DevOps Team"
+    }
+  ],
+  "strengths": [
+    {
+      "pillar": "security",
+      "title": "Data Protection at Rest",
+      "description": "All data encrypted using AWS KMS across RDS, S3, and EBS",
+      "evidence": [
+        "terraform/rds.tf",
+        "terraform/s3.tf",
+        "terraform/ec2.tf"
+      ]
+    },
+    {
+      "pillar": "security",
+      "title": "Data Protection in Transit",
+      "description": "TLS 1.2+ enforced for all external traffic with VPC endpoints",
+      "evidence": [
+        "terraform/alb.tf",
+        "terraform/vpc.tf"
+      ]
+    },
+    {
+      "pillar": "reliability",
+      "title": "High Availability Architecture",
+      "description": "Multi-AZ deployment with auto-scaling and load balancing",
+      "evidence": [
+        "terraform/asg.tf",
+        "terraform/alb.tf"
+      ]
+    },
+    {
+      "pillar": "performance-efficiency",
+      "title": "Multi-Layer Caching",
+      "description": "CloudFront CDN and ElastiCache Redis for optimal performance",
+      "evidence": [
+        "terraform/cloudfront.tf",
+        "terraform/elasticache.tf"
+      ]
+    },
+    {
+      "pillar": "cost-optimization",
+      "title": "Cost Governance",
+      "description": "AWS Budgets and cost allocation tags implemented",
+      "evidence": [
+        "terraform/budgets.tf",
+        "terraform/tags.tf"
+      ]
+    }
+  ],
+  "remediationRoadmap": {
+    "immediate": [
+      {
+        "issueId": "issue-1",
+        "title": "Fix IAM Wildcard Permissions",
+        "priority": "critical",
+        "owner": "Security Team",
+        "effort": "2-3 days",
+        "timeline": "Next 2 weeks"
+      },
+      {
+        "gapId": "gap-1",
+        "title": "Document IAM Policy Review Process",
+        "priority": "high",
+        "owner": "Security Team",
+        "effort": "1 day",
+        "timeline": "Next 2 weeks"
+      }
+    ],
+    "shortTerm": [
+      {
+        "issueId": "issue-3",
+        "title": "Implement S3 Backup Strategy",
+        "priority": "high",
+        "owner": "DevOps Team",
+        "effort": "3-5 days",
+        "timeline": "Next 1-2 months"
+      },
+      {
+        "issueId": "issue-4",
+        "title": "Conduct Performance Testing",
+        "priority": "high",
+        "owner": "Engineering Team",
+        "effort": "1-2 weeks",
+        "timeline": "Next 1-2 months"
+      },
+      {
+        "gapId": "gap-3",
+        "title": "Document Disaster Recovery Procedures",
+        "priority": "medium",
+        "owner": "DevOps Team",
+        "effort": "3-5 days",
+        "timeline": "Next 1-2 months"
+      }
+    ],
+    "longTerm": [
+      {
+        "issueId": "issue-2",
+        "title": "Implement Internal Service Encryption",
+        "priority": "medium",
+        "owner": "Engineering Team",
+        "effort": "2-3 weeks",
+        "timeline": "Next 3-6 months"
+      },
+      {
+        "issueId": "issue-5",
+        "title": "Automate Resource Cleanup",
+        "priority": "low",
+        "owner": "DevOps Team",
+        "effort": "1 week",
+        "timeline": "Next 3-6 months"
+      }
+    ]
+  },
+  "recommendations": {
+    "security": [
+      "Implement IAM Access Analyzer for continuous policy validation",
+      "Establish quarterly access reviews",
+      "Consider AWS Security Hub for centralized security monitoring"
+    ],
+    "reliability": [
+      "Define and document RTO/RPO requirements for all critical systems",
+      "Implement automated backup testing",
+      "Consider multi-region deployment for critical components"
+    ],
+    "performance-efficiency": [
+      "Establish performance testing as part of CI/CD pipeline",
+      "Use AWS Compute Optimizer for ongoing instance recommendations",
+      "Implement application performance monitoring (APM)"
+    ],
+    "cost-optimization": [
+      "Consider Reserved Instances or Savings Plans for predictable workloads",
+      "Implement automated resource tagging enforcement",
+      "Review and optimize data transfer costs"
+    ]
+  },
+  "nextSteps": [
+    "Review findings with stakeholders and discuss priorities",
+    "Assign remediation tasks to appropriate teams",
+    "Create tracking tickets for each remediation item",
+    "Schedule follow-up review in 3 months to track progress",
+    "Update documentation to address identified gaps",
+    "Integrate Well-Architected reviews into development workflow"
+  ],
+  "resourcesReviewed": [
+    "terraform/rds.tf",
+    "terraform/s3.tf",
+    "terraform/ec2.tf",
+    "terraform/iam.tf",
+    "terraform/alb.tf",
+    "terraform/asg.tf",
+    "terraform/vpc.tf",
+    "terraform/cloudfront.tf",
+    "terraform/elasticache.tf",
+    "terraform/cloudwatch.tf",
+    "terraform/budgets.tf"
+  ],
+  "references": [
+    {
+      "title": "AWS Well-Architected Framework",
+      "url": "https://aws.amazon.com/architecture/well-architected/"
+    },
+    {
+      "title": "Security Pillar Whitepaper",
+      "url": "https://docs.aws.amazon.com/wellarchitected/latest/security-pillar/welcome.html"
+    },
+    {
+      "title": "Reliability Pillar Whitepaper",
+      "url": "https://docs.aws.amazon.com/wellarchitected/latest/reliability-pillar/welcome.html"
+    },
+    {
+      "title": "Performance Efficiency Pillar Whitepaper",
+      "url": "https://docs.aws.amazon.com/wellarchitected/latest/performance-efficiency-pillar/welcome.html"
+    },
+    {
+      "title": "Cost Optimization Pillar Whitepaper",
+      "url": "https://docs.aws.amazon.com/wellarchitected/latest/cost-optimization-pillar/welcome.html"
+    }
+  ]
+}

@@ -1,0 +1,34 @@
+{
+  "name": "aws-well-architected-cdk-examples",
+  "version": "1.0.0",
+  "description": "CDK examples demonstrating Well-Architected Framework issues and fixes",
+  "main": "cost-optimization-issues.ts",
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc -w",
+    "cdk": "cdk",
+    "synth:issues": "cdk synth -a 'npx ts-node cost-optimization-issues.ts'",
+    "synth:fixed": "cdk synth -a 'npx ts-node cost-optimization-issues-fixed.ts'",
+    "diff:issues": "cdk diff -a 'npx ts-node cost-optimization-issues.ts'",
+    "diff:fixed": "cdk diff -a 'npx ts-node cost-optimization-issues-fixed.ts'"
+  },
+  "keywords": [
+    "aws",
+    "cdk",
+    "well-architected",
+    "cost-optimization",
+    "examples"
+  ],
+  "author": "AWS Well-Architected Power",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "aws-cdk": "^2.100.0",
+    "ts-node": "^10.9.0",
+    "typescript": "^5.0.0"
+  },
+  "dependencies": {
+    "aws-cdk-lib": "^2.100.0",
+    "constructs": "^10.0.0"
+  }
+}

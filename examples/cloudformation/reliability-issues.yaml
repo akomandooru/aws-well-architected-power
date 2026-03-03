@@ -1,0 +1,236 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: CloudFormation template with reliability anti-patterns for testing and learning
+
+# ISSUE 1: Single-AZ EC2 Instance
+Resources:
+  WebServer:
+    Type: AWS::EC2::Instance
+    Properties:
+      InstanceType: t3.micro
+      ImageId: ami-0c55b159cbfafe1f0
+      AvailabilityZone: us-east-1a  # Single AZ - no redundancy
+      SubnetId: !Ref PublicSubnet
+      SecurityGroupIds:
+        - !Ref WebSecurityGroup
+
+  # ISSUE 2: RDS Without Automated Backups
+  Database:
+    Type: AWS::RDS::DBInstance
+    Properties:
+      DBInstanceIdentifier: my-database
+      Engine: postgres
+      EngineVersion: '14.7'
+      DBInstanceClass: db.t3.micro
+      AllocatedStorage: 20
+      MasterUsername: admin
+      MasterUserPassword: MyPassword123
+      BackupRetentionPeriod: 0  # No automated backups
+      MultiAZ: false  # Single AZ deployment
+      PubliclyAccessible: false
+      VPCSecurityGroups:
+        - !Ref DBSecurityGroup
+      DBSubnetGroupName: !Ref DBSubnetGroup
+
+  # ISSUE 3: Load Balancer Without Health Checks
+  ApplicationLoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Name: my-alb
+      Subnets:
+        - !Ref PublicSubnet
+      SecurityGroups:
+        - !Ref ALBSecurityGroup
+      Scheme: internet-facing
+
+  TargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      Name: my-target-group
+      Port: 80
+      Protocol: HTTP
+      VpcId: !Ref VPC
+      # Missing: HealthCheckEnabled, HealthCheckPath, HealthCheckIntervalSeconds
+      Targets:
+        - Id: !Ref WebServer
+
+  # ISSUE 4: No Auto Scaling Configuration
+  LaunchTemplate:
+    Type: AWS::EC2::LaunchTemplate
+    Properties:
+      LaunchTemplateName: my-launch-template
+      LaunchTemplateData:
+        InstanceType: t3.micro
+        ImageId: ami-0c55b159cbfafe1f0
+        SecurityGroupIds:
+          - !Ref WebSecurityGroup
+  
+  # Fixed capacity - no auto scaling
+  # Missing: AWS::AutoScaling::AutoScalingGroup
+  # Missing: AWS::AutoScaling::ScalingPolicy
+
+  # ISSUE 5: S3 Bucket Without Versioning or Replication
+  DataBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: my-data-bucket
+      # Missing: VersioningConfiguration
+      # Missing: ReplicationConfiguration
+      # Missing: LifecycleConfiguration for backup
+
+  # ISSUE 6: Lambda Without Dead Letter Queue
+  ProcessingFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: data-processor
+      Runtime: python3.9
+      Handler: index.handler
+      Role: !GetAtt LambdaRole.Arn
+      Code:
+        ZipFile: |
+          def handler(event, context):
+              return {'statusCode': 200}
+      # Missing: DeadLetterConfig
+      # Missing: ReservedConcurrentExecutions (throttling protection)
+
+  # ISSUE 7: DynamoDB Without Point-in-Time Recovery
+  DataTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: my-data-table
+      AttributeDefinitions:
+        - AttributeName: id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: id
+          KeyType: HASH
+      BillingMode: PAY_PER_REQUEST
+      # Missing: PointInTimeRecoverySpecification
+
+  # ISSUE 8: ECS Service Without Service Auto Scaling
+  ECSCluster:
+    Type: AWS::ECS::Cluster
+    Properties:
+      ClusterName: my-cluster
+
+  ECSService:
+    Type: AWS::ECS::Service
+    Properties:
+      ServiceName: my-service
+      Cluster: !Ref ECSCluster
+      TaskDefinition: !Ref TaskDefinition
+      DesiredCount: 1  # Fixed count - no auto scaling
+      LaunchType: FARGATE
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          Subnets:
+            - !Ref PrivateSubnet
+          SecurityGroups:
+            - !Ref ECSSecurityGroup
+      # Missing: Auto scaling configuration
+
+  TaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Family: my-task
+      NetworkMode: awsvpc
+      RequiresCompatibilities:
+        - FARGATE
+      Cpu: '256'
+      Memory: '512'
+      ContainerDefinitions:
+        - Name: app
+          Image: nginx:latest
+          PortMappings:
+            - ContainerPort: 80
+
+  # Supporting Resources
+  VPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 10.0.0.0/16
+      EnableDnsHostnames: true
+      EnableDnsSupport: true
+
+  PublicSubnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: 10.0.1.0/24
+      AvailabilityZone: us-east-1a
+      MapPublicIpOnLaunch: true
+
+  PrivateSubnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: 10.0.2.0/24
+      AvailabilityZone: us-east-1a
+
+  DBSubnetGroup:
+    Type: AWS::RDS::DBSubnetGroup
+    Properties:
+      DBSubnetGroupDescription: Subnet group for RDS
+      SubnetIds:
+        - !Ref PrivateSubnet
+
+  WebSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security group for web servers
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+
+  ALBSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security group for ALB
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+
+  DBSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security group for database
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 5432
+          ToPort: 5432
+          SourceSecurityGroupId: !Ref WebSecurityGroup
+
+  ECSSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security group for ECS tasks
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          SourceSecurityGroupId: !Ref ALBSecurityGroup
+
+  LambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+
+Outputs:
+  LoadBalancerDNS:
+    Description: DNS name of the load balancer
+    Value: !GetAtt ApplicationLoadBalancer.DNSName

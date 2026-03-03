@@ -1,0 +1,36 @@
+{
+  "mcpServers": {
+    "aws-well-architected-security": {
+      "command": "uv",
+      "args": [
+        "tool",
+        "run",
+        "--from",
+        "awslabs.well-architected-security-mcp-server@latest",
+        "awslabs.well-architected-security-mcp-server.exe"
+      ],
+      "description": "AWS Well-Architected Security Assessment MCP Server - provides automated security checks, service monitoring, findings analysis, and compliance validation for the Security Pillar",
+      "disabled": true,
+      "required": false,
+      "env": {
+        "FASTMCP_LOG_LEVEL": "ERROR"
+      }
+    },
+    "aws-documentation": {
+      "command": "uv",
+      "args": [
+        "tool",
+        "run",
+        "--from",
+        "awslabs.aws-documentation-mcp-server@latest",
+        "awslabs.aws-documentation-mcp-server.exe"
+      ],
+      "description": "AWS Documentation MCP Server - provides access to AWS documentation, API references, and best practices",
+      "disabled": true,
+      "required": false,
+      "env": {
+        "FASTMCP_LOG_LEVEL": "ERROR"
+      }
+    }
+  }
+}
