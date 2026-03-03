@@ -450,52 +450,34 @@ See `hooks/README.md` for installation and customization instructions.
 
 ## Installation
 
-This power works immediately after installation with documentation-based guidance. For enhanced capabilities with automated security checks and real-time AWS documentation, optionally configure the MCP servers below.
+This power works immediately after installation with documentation-based guidance. For enhanced capabilities with automated security checks and real-time AWS documentation, optionally enable the included MCP servers.
 
-### Optional: Configure MCP Servers
+### Optional: Enable MCP Servers
 
 The power provides full value without MCP servers, but they add automated security assessments and real-time documentation access.
 
-**To enable MCP servers, add to your Kiro MCP configuration:**
+**The MCP servers are already configured with this power - just enable them:**
 
-User-level (`~/.kiro/settings/mcp.json`) or workspace-level (`.kiro/settings/mcp.json`):
-
-```json
-{
-  "mcpServers": {
-    "aws-well-architected-security": {
-      "command": "uvx",
-      "args": [
-        "--from",
-        "awslabs.well-architected-security-mcp-server",
-        "well-architected-security-mcp-server"
-      ],
-      "env": {
-        "FASTMCP_LOG_LEVEL": "ERROR"
-      }
-    },
-    "aws-documentation": {
-      "command": "uvx",
-      "args": ["awslabs.aws-documentation-mcp-server@latest"],
-      "env": {
-        "FASTMCP_LOG_LEVEL": "ERROR"
-      }
-    }
-  }
-}
-```
+1. In the power's detail page in Kiro, click the **"Open powers config"** button under "MCP Configuration"
+2. This opens the MCP configuration file with two tabs: User Config and Workspace Config
+3. Find the two MCP servers from this power (they start with `power-aws-well-architected-power-`):
+   - `power-aws-well-architected-power-aws-well-architected-security`
+   - `power-aws-well-architected-power-aws-documentation`
+4. For each server, change `"disabled": true` to `"disabled": false`
+5. Save the file (Ctrl+S or Cmd+S)
+6. The servers will connect automatically
 
 **Prerequisites for MCP servers:**
 - Python and uv installed ([installation guide](https://docs.astral.sh/uv/getting-started/installation/))
 - AWS credentials configured (for security assessment server)
 
-**What you get with MCP servers:**
+**What you get with MCP servers enabled:**
 - ✅ Automated security checks against your AWS environment
 - ✅ Real-time AWS documentation and best practices
 - ✅ Live compliance validation
 - ✅ Service-specific guidance
 
-**What you get without MCP servers:**
+**What you get without MCP servers (default):**
 - ✅ IaC code analysis (Terraform, CloudFormation, CDK)
 - ✅ Application code analysis (Python, Java, TypeScript, etc.)
 - ✅ Comprehensive Well-Architected documentation
