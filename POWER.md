@@ -450,13 +450,65 @@ See `hooks/README.md` for installation and customization instructions.
 
 ## Installation
 
-See the main README.md in the repository root for installation instructions.
+This power works immediately after installation with documentation-based guidance. For enhanced capabilities with automated security checks and real-time AWS documentation, optionally configure the MCP servers below.
+
+### Optional: Configure MCP Servers
+
+The power provides full value without MCP servers, but they add automated security assessments and real-time documentation access.
+
+**To enable MCP servers, add to your Kiro MCP configuration:**
+
+User-level (`~/.kiro/settings/mcp.json`) or workspace-level (`.kiro/settings/mcp.json`):
+
+```json
+{
+  "mcpServers": {
+    "aws-well-architected-security": {
+      "command": "uvx",
+      "args": [
+        "--from",
+        "awslabs.well-architected-security-mcp-server",
+        "well-architected-security-mcp-server"
+      ],
+      "env": {
+        "FASTMCP_LOG_LEVEL": "ERROR"
+      }
+    },
+    "aws-documentation": {
+      "command": "uvx",
+      "args": ["awslabs.aws-documentation-mcp-server@latest"],
+      "env": {
+        "FASTMCP_LOG_LEVEL": "ERROR"
+      }
+    }
+  }
+}
+```
+
+**Prerequisites for MCP servers:**
+- Python and uv installed ([installation guide](https://docs.astral.sh/uv/getting-started/installation/))
+- AWS credentials configured (for security assessment server)
+
+**What you get with MCP servers:**
+- ✅ Automated security checks against your AWS environment
+- ✅ Real-time AWS documentation and best practices
+- ✅ Live compliance validation
+- ✅ Service-specific guidance
+
+**What you get without MCP servers:**
+- ✅ IaC code analysis (Terraform, CloudFormation, CDK)
+- ✅ Application code analysis (Python, Java, TypeScript, etc.)
+- ✅ Comprehensive Well-Architected documentation
+- ✅ Code generation with best practices
+- ✅ Learning mode and examples
+
+Most users don't need MCP servers - the power is highly valuable for code review and generation without them.
 
 ## Getting Started
 
-1. Install the power following the README instructions
-2. Ensure AWS MCP servers are configured (optional but recommended)
-3. Start a review session or analyze IaC files
-4. Optionally install hook templates for automated reviews
+1. The power works immediately - no additional setup required
+2. (Optional) Configure AWS MCP servers for automated security checks - see Installation section above
+3. Start using: "Review my infrastructure against AWS Well-Architected best practices"
+4. (Optional) Install hook templates from the `hooks/` directory for automated reviews
 
-For a quick start guide, see the repository documentation.
+For detailed workflows and examples, see the sections below.
