@@ -1603,13 +1603,11 @@ mv ~/.kiro/hooks/aws-waf-file-save.md.disabled ~/.kiro/hooks/aws-waf-file-save.m
 ## Project Information
 
 **Version**: 1.0.0  
-**Last Updated**: 2024  
-**Maintained By**: Kiro Community  
+**Last Updated**: 2026  
 **License**: MIT  
-**Repository**: <repository-url>  
 **Documentation**: [POWER.md](POWER.md) | [QUICKSTART.md](QUICKSTART.md)  
-**Support**: Open an issue or contact Kiro support
 
 ---
 
 **Ready to build better AWS infrastructure?** Start with the [Quick Start Guide](QUICKSTART.md) and conduct your first Well-Architected review in under 5 minutes! 🚀
+
