@@ -1805,6 +1805,709 @@ resource "aws_ecr_lifecycle_policy" "app" {
 - [AWS Sustainability](https://aws.amazon.com/sustainability/)
 - [AWS re:Invent Sustainability Sessions](https://www.youtube.com/results?search_query=aws+reinvent+sustainability)
 
+## Context-Aware Sustainability Trade-Off Guidance
+
+Sustainability is important, but the **level** and **approach** to sustainability optimization should be context-aware. While some practices (eliminating idle resources, using efficient storage) are universally beneficial, others involve trade-offs with cost, performance, and complexity. Understanding these trade-offs helps you make informed decisions that align with your business priorities.
+
+### Context Questions for Sustainability Recommendations
+
+Before making sustainability recommendations, gather context:
+
+1. **Sustainability Priority**: How important is sustainability to your organization? (low, medium, high, critical)
+2. **Environment Type**: Development, staging, or production?
+3. **Performance Requirements**: What are your latency and throughput targets?
+4. **Budget Constraints**: Tight, moderate, or flexible?
+5. **Operational Maturity**: Startup, growth, or enterprise?
+6. **Migration Capacity**: Can you modify code/infrastructure? (limited, moderate, extensive)
+7. **Availability Requirements**: What's your SLA? (95%, 99%, 99.9%, 99.99%+)
+
+### Trade-Off 1: Graviton (ARM64) Migration
+
+#### Context-Dependent Graviton Adoption
+
+**Sustainability Priority: Low, Budget: Tight**:
+```
+Recommendation: Graviton migration is OPTIONAL but provides cost savings.
+
+Decision Factors:
+- Graviton provides 20-40% better price/performance
+- Requires ARM64-compatible code and dependencies
+- Migration effort: 2-8 hours per application
+
+Options:
+1. Stay on x86 (Current State)
+   - Sustainability Impact: Baseline (higher energy per compute)
+   - Cost: Baseline
+   - Migration Effort: $0
+   - Best for: Applications with x86-specific dependencies
+
+2. Migrate to Graviton
+   - Sustainability Impact: 20-60% better energy efficiency
+   - Cost: 20-40% reduction
+   - Migration Effort: $500-2000 per application
+   - Best for: New applications, containerized workloads, Python/Java/Node.js apps
+
+Trade-off: Migration effort vs. ongoing cost savings and efficiency.
+Recommendation: Migrate new workloads to Graviton. Evaluate existing workloads based on ROI.
+
+ROI Calculation:
+- Application running on m5.xlarge: $140/month
+- Migration to m6g.xlarge: $112/month (20% savings = $28/month)
+- Migration effort: 4 hours × $100/hour = $400
+- Break-even: 14 months
+- 3-year savings: $1,008 - $400 = $608
+```
+
+**Sustainability Priority: High, Budget: Flexible**:
+```
+Recommendation: Graviton migration is STRONGLY RECOMMENDED for all compatible workloads.
+
+Aggressive Migration Strategy:
+1. Migrate all new workloads to Graviton (REQUIRED)
+2. Migrate existing containerized workloads (HIGH PRIORITY)
+3. Migrate existing VM-based workloads (MEDIUM PRIORITY)
+4. Evaluate x86-specific workloads for alternatives (LOW PRIORITY)
+
+Benefits:
+- 20-60% better energy efficiency
+- 20-40% cost reduction
+- Better performance per watt
+- Supports sustainability goals
+
+Investment:
+- Migration effort: 2-8 hours per application
+- Testing and validation: 4-16 hours per application
+- Total: $1,000-4,000 per application
+
+Trade-off: Upfront migration investment for long-term sustainability and cost benefits.
+Recommendation: Prioritize Graviton migration as a strategic initiative.
+
+Rationale: If sustainability is a priority, Graviton provides measurable impact.
+Energy efficiency improvement is 20-60%, which directly reduces carbon footprint.
+```
+
+**Production, Critical Workload**:
+```
+Recommendation: Graviton migration requires careful validation.
+
+Approach:
+1. Validate ARM64 compatibility for all dependencies
+2. Test performance in staging environment
+3. Run load tests to verify performance characteristics
+4. Implement gradual rollout (canary deployment)
+5. Monitor performance and error rates closely
+
+Risks:
+- Potential performance differences (usually positive)
+- Dependency compatibility issues
+- Different CPU instruction set behavior
+
+Mitigation:
+- Comprehensive testing before production
+- Gradual rollout with rollback plan
+- Performance monitoring and comparison
+
+Trade-off: Migration risk vs. sustainability and cost benefits.
+Recommendation: Migrate with proper testing and gradual rollout.
+```
+
+#### Graviton Decision Matrix
+
+| Workload Type | Sustainability Priority | Migration Effort | Recommendation | Expected Benefit |
+|---------------|------------------------|------------------|----------------|------------------|
+| **New Application** | Any | Low (design for ARM64) | STRONGLY RECOMMENDED | 20-40% cost, 20-60% energy |
+| **Containerized App** | High | Low-Medium | RECOMMENDED | 20-40% cost, 20-60% energy |
+| **Python/Java/Node.js** | Medium-High | Low-Medium | RECOMMENDED | 20-40% cost, 20-60% energy |
+| **Go/Rust Application** | Medium-High | Low | STRONGLY RECOMMENDED | 20-40% cost, 20-60% energy |
+| **Legacy .NET Framework** | Any | High (may not be compatible) | NOT RECOMMENDED | N/A |
+| **x86-Specific Binary** | Any | Very High | NOT RECOMMENDED | N/A |
+
+### Trade-Off 2: Right-Sizing vs. Performance Headroom
+
+#### Context-Dependent Right-Sizing
+
+**Development Environment**:
+```
+Recommendation: Aggressive right-sizing is RECOMMENDED.
+
+Approach:
+- Use smallest instance type that works
+- Accept occasional performance issues
+- Implement auto-shutdown during off-hours
+- Use burstable instances (T3/T4g)
+
+Benefits:
+- 50-70% cost reduction
+- 50-70% energy reduction
+- Minimal impact (dev environment)
+
+Trade-off: Occasional slow performance vs. significant savings.
+Recommendation: Right-size aggressively. Dev performance is not critical.
+
+Example:
+- Current: m5.xlarge (4 vCPU, 16 GB) = $140/month
+- Right-sized: t4g.medium (2 vCPU, 4 GB) = $28/month
+- Savings: $112/month (80% reduction)
+- Impact: Slower builds, acceptable for dev
+```
+
+**Production, Variable Load**:
+```
+Recommendation: Right-size with auto-scaling for burst capacity.
+
+Approach:
+- Right-size for average load (not peak)
+- Use auto-scaling for burst capacity
+- Target 60-70% average utilization
+- Scale up for peak, scale down for low
+
+Benefits:
+- 30-50% cost reduction
+- 30-50% energy reduction
+- Maintains performance during peaks
+
+Trade-off: Auto-scaling complexity vs. efficiency.
+Recommendation: Right-size with auto-scaling (best of both worlds).
+
+Example:
+- Current: 4× m5.xlarge (always running) = $560/month
+- Right-sized: 2× m5.xlarge + auto-scale to 6× = $280-420/month
+- Savings: $140-280/month (25-50% reduction)
+- Performance: Same or better (scales to 6× during peaks)
+```
+
+**Production, Consistent Load, Latency-Sensitive**:
+```
+Recommendation: Right-size conservatively with performance headroom.
+
+Approach:
+- Right-size for 80th percentile load
+- Maintain 20-30% headroom for bursts
+- Target 50-60% average utilization
+- Monitor performance metrics closely
+
+Benefits:
+- 20-30% cost reduction
+- 20-30% energy reduction
+- Maintains performance SLAs
+
+Trade-off: Some efficiency loss for performance reliability.
+Recommendation: Right-size conservatively to maintain SLAs.
+
+Example:
+- Current: 4× m5.xlarge (30% utilization) = $560/month
+- Right-sized: 3× m5.xlarge (40% utilization) = $420/month
+- Savings: $140/month (25% reduction)
+- Performance: Maintained with headroom
+```
+
+#### Right-Sizing Decision Matrix
+
+| Environment | Load Pattern | Latency Sensitivity | Target Utilization | Auto-Scaling | Expected Savings |
+|-------------|--------------|---------------------|-------------------|--------------|------------------|
+| **Development** | Variable | Low | 70-80% | Optional | 50-70% |
+| **Staging** | Variable | Low-Medium | 60-70% | Recommended | 40-60% |
+| **Production - Internal** | Variable | Medium | 60-70% | Recommended | 30-50% |
+| **Production - Customer** | Variable | High | 50-60% | Required | 20-40% |
+| **Production - Critical** | Consistent | Very High | 40-50% | Required | 10-30% |
+
+### Trade-Off 3: Multi-AZ vs. Single-AZ (Sustainability Perspective)
+
+#### Context-Dependent Multi-AZ Decisions
+
+**Development Environment, Sustainability Priority: High**:
+```
+Recommendation: Single-AZ is ACCEPTABLE for significant energy savings.
+
+Single-AZ Configuration:
+- 50% reduction in infrastructure (1 AZ instead of 2)
+- 50% reduction in energy consumption
+- 50% reduction in cost
+- Acceptable downtime for dev/test
+
+Trade-off: No high availability vs. 50% energy/cost savings.
+Recommendation: Use Single-AZ for dev/test environments.
+
+Sustainability Impact:
+- 50% fewer servers running
+- 50% less energy consumed
+- 50% less cooling required
+- Significant carbon footprint reduction
+
+Cost Impact:
+- Development environment: $1,000/month → $500/month
+- Annual savings: $6,000
+- Energy savings: ~5,000 kWh/year
+```
+
+**Production, Sustainability Priority: High, SLA: 99.9%**:
+```
+Recommendation: Multi-AZ is REQUIRED, but optimize within Multi-AZ.
+
+Multi-AZ with Sustainability Optimization:
+- Use Multi-AZ for availability (REQUIRED for 99.9% SLA)
+- Right-size instances in each AZ
+- Use auto-scaling to minimize idle capacity
+- Use Graviton for better efficiency
+- Implement efficient load balancing
+
+Trade-off: Reliability requirement vs. sustainability optimization.
+Recommendation: Multi-AZ is required, but optimize efficiency within that constraint.
+
+Sustainability Optimizations:
+- Right-sizing: 30% energy reduction
+- Graviton migration: 40% energy reduction
+- Auto-scaling: 20% energy reduction
+- Combined: ~60% energy reduction vs. over-provisioned Multi-AZ
+
+Example:
+- Over-provisioned Multi-AZ: 4× m5.xlarge per AZ = 8 instances = $1,120/month
+- Optimized Multi-AZ: 2× m6g.xlarge per AZ + auto-scale = $448-672/month
+- Savings: $448-672/month (40-60% reduction)
+- Availability: Same (99.9%+)
+```
+
+**Production, Sustainability Priority: Critical, Global Application**:
+```
+Recommendation: Multi-Region with sustainability-optimized regions.
+
+Approach:
+- Deploy to regions with high renewable energy (us-west-2, eu-north-1, ca-central-1)
+- Use CloudFront to reduce data transfer distance
+- Implement regional failover (not active-active unless required)
+- Right-size and use Graviton in all regions
+
+Trade-off: Global availability vs. energy efficiency.
+Recommendation: Choose sustainable regions and optimize within them.
+
+Sustainable Region Selection:
+1. us-west-2 (Oregon): 95% renewable energy
+2. eu-north-1 (Stockholm): 98% renewable energy
+3. ca-central-1 (Canada): 85% renewable energy
+4. eu-west-1 (Ireland): 90% renewable energy
+
+Avoid regions with high carbon intensity:
+- Regions powered primarily by coal or natural gas
+- Check AWS Customer Carbon Footprint Tool for data
+
+Sustainability Impact:
+- Region selection: 30-50% carbon reduction
+- Graviton + right-sizing: 40-60% energy reduction
+- CloudFront caching: 20-40% data transfer reduction
+- Combined: 60-80% carbon footprint reduction
+```
+
+### Trade-Off 4: Storage Optimization vs. Access Performance
+
+#### Context-Dependent Storage Decisions
+
+**Archival Data, Infrequent Access**:
+```
+Recommendation: Aggressive lifecycle policies for maximum efficiency.
+
+Lifecycle Strategy:
+- Day 0-7: S3 Standard (frequent access expected)
+- Day 7-30: S3 Intelligent-Tiering (automatic optimization)
+- Day 30-90: S3 Glacier Instant Retrieval (infrequent access)
+- Day 90-365: S3 Glacier Flexible Retrieval (rare access)
+- Day 365+: S3 Glacier Deep Archive (archival)
+
+Benefits:
+- 70-95% storage cost reduction
+- 70-95% energy reduction
+- Automatic optimization
+
+Trade-off: Retrieval time vs. efficiency.
+- S3 Standard: Instant access
+- Glacier Instant Retrieval: Instant access, 68% cheaper
+- Glacier Flexible Retrieval: 3-5 hours, 82% cheaper
+- Glacier Deep Archive: 12-48 hours, 95% cheaper
+
+Recommendation: Use aggressive lifecycle policies for archival data.
+
+Example:
+- 10 TB in S3 Standard: $230/month
+- 10 TB with lifecycle policies: $50-80/month
+- Savings: $150-180/month (65-78% reduction)
+- Energy savings: Proportional to cost savings
+```
+
+**Active Data, Frequent Access**:
+```
+Recommendation: S3 Intelligent-Tiering for automatic optimization.
+
+Approach:
+- Use S3 Intelligent-Tiering for all active data
+- Automatic transition to infrequent access after 30 days
+- Automatic transition to archive after 90 days
+- No retrieval fees, instant access
+
+Benefits:
+- 40-70% cost reduction for mixed access patterns
+- 40-70% energy reduction
+- Zero operational overhead
+- No performance impact
+
+Trade-off: Small monitoring fee vs. automatic optimization.
+- Monitoring fee: $0.0025 per 1,000 objects
+- Savings: 40-70% on storage costs
+- ROI: Positive for buckets with >1,000 objects
+
+Recommendation: Use Intelligent-Tiering for all active data (default choice).
+
+Example:
+- 5 TB mixed access data in S3 Standard: $115/month
+- 5 TB in Intelligent-Tiering: $50-80/month
+- Monitoring fee: $2-5/month
+- Net savings: $30-63/month (26-55% reduction)
+```
+
+**High-Performance Database Storage**:
+```
+Recommendation: Use gp3 with right-sized IOPS and throughput.
+
+Approach:
+- Use gp3 instead of gp2 (20% cheaper, better performance)
+- Right-size IOPS and throughput (don't over-provision)
+- Monitor actual usage and adjust
+- Use io2 only for extreme IOPS requirements
+
+Benefits:
+- 20% cost reduction (gp3 vs gp2)
+- Better energy efficiency
+- Predictable performance
+
+Trade-off: Need to specify IOPS/throughput vs. automatic scaling.
+Recommendation: Use gp3 with monitoring and adjustment.
+
+Example:
+- 1 TB gp2 (3,000 IOPS): $100/month
+- 1 TB gp3 (3,000 IOPS, 125 MB/s): $80/month
+- Savings: $20/month (20% reduction)
+- Performance: Same or better
+```
+
+#### Storage Decision Matrix
+
+| Data Type | Access Pattern | Retrieval Time | Recommended Tier | Cost vs. Standard | Energy Savings |
+|-----------|----------------|----------------|------------------|-------------------|----------------|
+| **Active Data** | Daily | Instant | S3 Intelligent-Tiering | 40-70% savings | 40-70% |
+| **Recent Backups** | Weekly | Instant | Glacier Instant Retrieval | 68% savings | 68% |
+| **Old Backups** | Monthly | 3-5 hours | Glacier Flexible Retrieval | 82% savings | 82% |
+| **Archival** | Yearly | 12-48 hours | Glacier Deep Archive | 95% savings | 95% |
+| **Logs (Recent)** | Daily | Instant | S3 Standard-IA | 50% savings | 50% |
+| **Logs (Old)** | Rare | 3-5 hours | Glacier Flexible Retrieval | 82% savings | 82% |
+
+### Trade-Off 5: Scheduled Shutdown vs. Always-On Availability
+
+#### Context-Dependent Shutdown Strategies
+
+**Development/Test Environments**:
+```
+Recommendation: Aggressive scheduled shutdown is STRONGLY RECOMMENDED.
+
+Shutdown Schedule:
+- Weekdays: 8 AM - 7 PM (11 hours)
+- Weekends: Shut down
+- Holidays: Shut down
+- Total running time: 55 hours/week (33% of time)
+
+Benefits:
+- 67% cost reduction
+- 67% energy reduction
+- Zero impact on development (resources available during work hours)
+
+Trade-off: No 24/7 access vs. massive savings.
+Recommendation: Implement scheduled shutdown for all non-production environments.
+
+Implementation:
+- Use AWS Instance Scheduler
+- Tag resources with AutoSchedule=true
+- Customize schedule per team timezone
+- Override for special cases (demos, testing)
+
+Example:
+- Development environment: $2,000/month (always-on)
+- With scheduled shutdown: $660/month (67% savings)
+- Annual savings: $16,080
+- Energy savings: ~15,000 kWh/year
+- Carbon reduction: ~10 metric tons CO2/year
+```
+
+**Staging Environment, Pre-Production Testing**:
+```
+Recommendation: Scheduled shutdown with on-demand start.
+
+Approach:
+- Default: Shut down outside business hours
+- On-demand: Start for testing/demos
+- Automatic shutdown after 2 hours of inactivity
+- Weekend shutdown unless explicitly needed
+
+Benefits:
+- 50-60% cost reduction
+- 50-60% energy reduction
+- Available when needed
+
+Trade-off: Need to start manually vs. significant savings.
+Recommendation: Implement with easy start mechanism (Lambda, console, CLI).
+
+Example:
+- Staging environment: $1,500/month (always-on)
+- With smart shutdown: $600-750/month (50-60% savings)
+- Annual savings: $9,000-10,800
+```
+
+**Production, Internal Tools, Business Hours Usage**:
+```
+Recommendation: Consider scheduled scaling (not shutdown).
+
+Approach:
+- Business hours (8 AM - 6 PM): Full capacity
+- Off-hours (6 PM - 8 AM): Reduced capacity (1-2 instances)
+- Weekends: Minimal capacity
+- Maintain availability, reduce capacity
+
+Benefits:
+- 40-50% cost reduction
+- 40-50% energy reduction
+- Maintains availability for off-hours access
+
+Trade-off: Reduced off-hours performance vs. efficiency.
+Recommendation: Scale down (not shut down) for internal production tools.
+
+Example:
+- Internal tool: 4 instances 24/7 = $560/month
+- With scheduled scaling: 4 instances (business hours), 1 instance (off-hours) = $280-350/month
+- Savings: $210-280/month (38-50% reduction)
+```
+
+**Production, Customer-Facing, 24/7 Requirement**:
+```
+Recommendation: Always-on is REQUIRED, but optimize efficiency.
+
+Approach:
+- Maintain 24/7 availability (REQUIRED)
+- Use auto-scaling to match demand patterns
+- Right-size for actual load
+- Use Graviton for efficiency
+- Implement efficient caching
+
+Trade-off: 24/7 availability requirement vs. sustainability optimization.
+Recommendation: Cannot shut down, but optimize within always-on constraint.
+
+Sustainability Optimizations:
+- Auto-scaling: 20-30% energy reduction
+- Right-sizing: 30-40% energy reduction
+- Graviton: 40-60% energy reduction
+- Caching: 20-30% compute reduction
+- Combined: 60-80% energy reduction vs. over-provisioned baseline
+
+Example:
+- Over-provisioned 24/7: 8 instances = $1,120/month
+- Optimized 24/7: 2-6 instances (auto-scaled) + Graviton = $450-700/month
+- Savings: $420-670/month (38-60% reduction)
+- Availability: Same (99.9%+)
+```
+
+### Trade-Off 6: Sustainability vs. Performance Optimization
+
+#### Context-Dependent Performance vs. Sustainability
+
+**Startup, Sustainability Priority: Low, Performance: Critical**:
+```
+Recommendation: Prioritize performance, optimize sustainability where possible.
+
+Approach:
+- Use performance-optimized instances (C5, C6i)
+- Over-provision for performance headroom
+- Use caching aggressively
+- Optimize sustainability without impacting performance
+
+Sustainability Optimizations (No Performance Impact):
+- Use Graviton (C6g) for better efficiency at same performance
+- Implement scheduled shutdown for non-production
+- Use S3 lifecycle policies
+- Implement efficient caching (reduces compute)
+
+Trade-off: Performance priority vs. sustainability.
+Recommendation: Optimize sustainability where it doesn't impact performance.
+
+Rationale: For startups, product-market fit and performance matter most.
+Sustainability is important but secondary to business success.
+```
+
+**Enterprise, Sustainability Priority: High, Performance: Important**:
+```
+Recommendation: Balance performance and sustainability with data-driven decisions.
+
+Approach:
+- Set performance SLAs (e.g., p99 latency < 200ms)
+- Optimize sustainability within SLA constraints
+- Use performance testing to validate sustainability changes
+- Make trade-offs based on business impact
+
+Sustainability Optimizations:
+1. Graviton migration (usually improves performance)
+2. Right-sizing with auto-scaling (maintains performance)
+3. Efficient caching (improves performance and sustainability)
+4. Region selection (may impact latency slightly)
+
+Trade-off: Slight performance impact vs. sustainability goals.
+Recommendation: Optimize sustainability while maintaining SLAs.
+
+Example Decision:
+- Option A: C5.xlarge in us-east-1 (low latency, high carbon)
+- Option B: C6g.xlarge in us-west-2 (5ms higher latency, 60% lower carbon)
+- Decision: If 5ms is acceptable, choose Option B
+```
+
+**Regulated Industry, Sustainability Priority: Critical**:
+```
+Recommendation: Sustainability is a strategic priority and compliance requirement.
+
+Approach:
+- Set sustainability targets (e.g., 50% carbon reduction by 2025)
+- Measure carbon footprint using AWS Customer Carbon Footprint Tool
+- Optimize aggressively across all areas
+- Report sustainability metrics to stakeholders
+
+Required Optimizations:
+- Migrate all workloads to Graviton (unless incompatible)
+- Use regions with highest renewable energy
+- Implement comprehensive lifecycle policies
+- Aggressive right-sizing and auto-scaling
+- Scheduled shutdown for all non-production
+- Efficient data transfer and caching
+
+Trade-off: Significant effort vs. sustainability compliance.
+Recommendation: Sustainability is non-negotiable, invest accordingly.
+
+Expected Results:
+- 60-80% carbon footprint reduction
+- 40-60% cost reduction
+- Improved corporate sustainability metrics
+- Compliance with sustainability regulations
+```
+
+### When to Prioritize Sustainability
+
+**Prioritize Sustainability When:**
+
+1. **Corporate Sustainability Goals**: Organization has committed to carbon neutrality or reduction targets
+2. **Regulatory Requirements**: Industry regulations require sustainability reporting or targets
+3. **Cost Optimization Alignment**: Sustainability improvements also reduce costs (win-win)
+4. **Low Performance Impact**: Sustainability changes don't affect user experience
+5. **Non-Production Environments**: Dev/test environments where availability isn't critical
+6. **Long-Term Strategy**: Building sustainable practices for future growth
+
+**Deprioritize Sustainability When:**
+
+1. **Critical Performance Requirements**: Latency or throughput SLAs are at risk
+2. **High Availability Requirements**: 99.99%+ SLA requires redundancy over efficiency
+3. **Startup Phase**: Product-market fit and growth are primary focus
+4. **Tight Deadlines**: Immediate delivery is more important than optimization
+5. **Legacy Systems**: Migration effort outweighs sustainability benefits
+6. **Compliance Conflicts**: Other compliance requirements take precedence
+
+### Sustainability Decision Framework
+
+Use this framework to make sustainability trade-off decisions:
+
+```
+1. Identify the sustainability opportunity
+   - What optimization is possible?
+   - What's the energy/carbon impact?
+
+2. Assess the trade-offs
+   - Cost impact (positive or negative?)
+   - Performance impact (acceptable?)
+   - Complexity impact (manageable?)
+   - Availability impact (acceptable?)
+
+3. Consider the context
+   - Environment type (dev/staging/prod?)
+   - Sustainability priority (low/medium/high?)
+   - Performance requirements (flexible/strict?)
+   - Budget constraints (tight/flexible?)
+
+4. Calculate the ROI
+   - Energy savings (kWh/year)
+   - Cost savings ($/month)
+   - Carbon reduction (metric tons CO2/year)
+   - Implementation effort (hours)
+
+5. Make the decision
+   - If ROI is positive and trade-offs are acceptable: IMPLEMENT
+   - If ROI is positive but trade-offs are significant: EVALUATE
+   - If ROI is negative or trade-offs are unacceptable: SKIP
+
+6. Document the decision
+   - Record the rationale
+   - Track the impact
+   - Review periodically
+```
+
+### Example Trade-Off Decisions
+
+**Example 1: Graviton Migration for Web Application**
+```
+Opportunity: Migrate web application from m5.xlarge to m6g.xlarge
+Energy Impact: 40% reduction
+Cost Impact: $28/month savings
+Performance Impact: Same or better
+Complexity: 4 hours migration + 4 hours testing
+ROI: Break-even in 14 months, $1,008 savings over 3 years
+
+Context:
+- Environment: Production
+- Sustainability Priority: Medium
+- Performance: Important (web application)
+- Budget: Moderate
+
+Decision: IMPLEMENT
+Rationale: Positive ROI, no performance impact, reasonable effort
+```
+
+**Example 2: Scheduled Shutdown for Development Environment**
+```
+Opportunity: Shut down dev environment outside business hours (8 PM - 8 AM, weekends)
+Energy Impact: 67% reduction
+Cost Impact: $1,340/month savings
+Performance Impact: None (not used outside business hours)
+Complexity: 2 hours setup
+ROI: Immediate, $16,080/year savings
+
+Context:
+- Environment: Development
+- Sustainability Priority: Any
+- Performance: Not critical
+- Budget: Any
+
+Decision: STRONGLY RECOMMENDED
+Rationale: Massive savings, zero downside, minimal effort
+```
+
+**Example 3: Region Migration for Sustainability**
+```
+Opportunity: Migrate from us-east-1 to us-west-2 (95% renewable energy)
+Energy Impact: 40% carbon reduction
+Cost Impact: Neutral (same pricing)
+Performance Impact: +5ms latency for East Coast users
+Complexity: 40 hours migration + testing
+ROI: Carbon reduction only, no cost savings
+
+Context:
+- Environment: Production
+- Sustainability Priority: High
+- Performance: Latency-sensitive (p99 < 100ms)
+- Budget: Flexible
+
+Decision: EVALUATE
+Rationale: Significant carbon reduction, but 5ms latency impact may affect user experience
+Recommendation: Test with real users, measure impact, decide based on data
+```
+
 ## Summary
 
 The Sustainability Pillar helps you minimize the environmental impact of your cloud workloads. By implementing the best practices in this guide, you can:
@@ -1826,3 +2529,171 @@ Key principles to follow:
 5. **Continuous improvement** - Regularly review and optimize your workloads
 
 Start with quick wins like implementing auto-scaling and scheduled shutdowns for non-production environments, then progress to more advanced optimizations like migrating to Graviton and implementing comprehensive data lifecycle management.
+
+
+---
+
+## Mode-Aware Guidance for Sustainability Reviews
+
+This section guides Kiro on how to adapt Sustainability Pillar reviews based on the current review mode.
+
+### Simple Mode - Sustainability Reviews
+
+**Token Budget:** 17-25K | **Latency:** 2.5-6s | **Use:** CI/CD, quick checks, dev reviews
+
+**What to Include:**
+- Direct sustainability violation identification (oversized instances, inefficient regions, no auto-scaling)
+- Prescriptive recommendations without trade-off discussion
+- Standard risk levels: High (significant waste), Medium (moderate inefficiency), Low (minor improvements)
+- Code examples showing fixes
+
+**What to EXCLUDE:**
+- Context questions about sustainability goals, carbon footprint targets, or business priorities
+- Trade-off discussions (sustainability vs. cost, sustainability vs. performance)
+- Alternative approaches or decision matrices
+
+**Example Output:**
+```
+⚠️ MEDIUM RISK: Instance running in high-carbon region (us-east-1)
+Location: compute.tf:23
+Recommendation: Consider migrating to low-carbon region (eu-west-1, ca-central-1)
+Benefit: 50-70% reduction in carbon footprint
+```
+
+### Context-Aware Mode - Sustainability Reviews
+
+**Token Budget:** 35-50K | **Latency:** 4-8s | **Use:** Interactive sessions, production reviews
+
+**What to Include:**
+- Context questions (3-5): Sustainability goals, latency requirements, data residency constraints, budget priorities
+- Conditional recommendations based on context
+- Trade-off explanations (sustainability vs. latency, sustainability vs. cost)
+- Carbon footprint estimates for key recommendations
+- Alternative approaches with pros/cons
+
+**Example Output:**
+```
+⚠️ CONTEXT-DEPENDENT: Workload running in high-carbon region
+
+Context Questions:
+- Do you have sustainability goals? (carbon neutral target/general efficiency/no specific goals)
+- What are your latency requirements? (strict <50ms/moderate <200ms/flexible)
+- Any data residency constraints? (yes/no)
+
+Conditional Guidance:
+- FOR flexible latency + sustainability goals: Low-carbon region RECOMMENDED
+  - Carbon reduction: 50-70%
+  - Latency impact: +20-50ms (acceptable for many workloads)
+  - Cost: Similar or lower (renewable energy regions often cheaper)
+  
+- FOR strict latency requirements: Current region acceptable
+  - Trade-off: Lower latency vs. higher carbon footprint
+  - Alternative: Optimize resource utilization in current region
+
+Recommendation: Based on latency requirements and sustainability goals, choose appropriate region.
+```
+
+### Full Analysis Mode - Sustainability Reviews
+
+**Token Budget:** 70-95K | **Latency:** 5-10s | **Use:** Major decisions, sustainability planning
+
+**What to Include:**
+- Comprehensive context gathering (10+ questions including carbon targets, ESG reporting needs, customer expectations)
+- Decision matrices comparing 3-5 sustainability approaches
+- Quantitative carbon footprint analysis with reduction estimates
+- Multi-pillar impact analysis (sustainability vs. cost vs. performance vs. reliability)
+- Scenario matching (startup/growth/enterprise sustainability maturity)
+- Long-term sustainability roadmap and ESG reporting implications
+- Phased implementation approach
+
+**Example Output:**
+```
+🔍 COMPREHENSIVE ANALYSIS: Sustainability Optimization Strategy
+
+Decision Matrix: Region and Resource Options
+| Option | Carbon | Cost | Latency | Reliability | Best For |
+|--------|--------|------|---------|-------------|----------|
+| Current (us-east-1) | High | $$ | 20ms | ⭐⭐⭐⭐⭐ | Strict latency |
+| Low-carbon (eu-west-1) | Low | $ | 70ms | ⭐⭐⭐⭐ | Sustainability focus |
+| Hybrid (multi-region) | Medium | $$$ | 20ms | ⭐⭐⭐⭐⭐ | Global + sustainable |
+| Graviton + low-carbon | Very Low | $ | 70ms | ⭐⭐⭐⭐ | Max sustainability |
+
+Recommended: Graviton instances in low-carbon region
+
+Carbon Footprint Analysis:
+- Current: 1000 kg CO2e/month
+- Proposed: 250 kg CO2e/month (75% reduction)
+- Cost: $500/month → $400/month (20% savings)
+- Latency: 20ms → 70ms (+50ms)
+- Acceptable for: Non-real-time workloads
+
+Cost-Benefit Analysis:
+- Carbon reduction: 750 kg CO2e/month (9 tons/year)
+- Cost savings: $100/month ($1,200/year)
+- ESG benefit: Supports carbon neutral goals
+- Customer appeal: Sustainability-conscious customers
+
+[Detailed pillar impact analysis, trade-off scenarios, implementation roadmap]
+```
+
+### Mode Selection
+
+**Simple Mode:** CI/CD, dev files, "quick review"
+**Context-Aware Mode:** Production files, interactive sessions, "review with context"
+**Full Analysis Mode:** Explicit request for "full analysis", sustainability planning
+
+### Best Practices by Mode
+
+**Simple Mode:** Focus on clear inefficiencies, prescriptive fixes, no context questions
+**Context-Aware Mode:** Ask 3-5 context questions, explain trade-offs, provide alternatives
+**Full Analysis Mode:** Comprehensive analysis, decision matrices, carbon footprint calculations, roadmap
+
+### Common Scenarios by Mode
+
+**High-Carbon Region:**
+- Simple: "Consider migrating to low-carbon region (eu-west-1, ca-central-1)"
+- Context-Aware: "For flexible latency, low-carbon region reduces carbon by 50-70%. For strict latency, optimize current region"
+- Full Analysis: "[Decision matrix comparing regions with carbon footprint, cost, latency, and ESG implications]"
+
+**Oversized Instances:**
+- Simple: "Right-size to t3.medium for 60% energy reduction"
+- Context-Aware: "For 10% CPU usage, t3.medium sufficient (60% energy savings). For variable load, use auto-scaling"
+- Full Analysis: "[Decision matrix comparing instance types and Graviton with carbon footprint, cost, performance]"
+
+**No Auto-Scaling:**
+- Simple: "Enable auto-scaling to reduce waste during off-peak hours"
+- Context-Aware: "For variable traffic, auto-scaling reduces energy waste by 40-60%. For steady traffic, right-size fixed capacity"
+- Full Analysis: "[Decision matrix comparing scaling strategies with carbon footprint, cost, and operational complexity]"
+
+### Sustainability-Specific Guidance
+
+**Key Sustainability Metrics:**
+- Carbon footprint (kg CO2e/month)
+- Energy efficiency (compute per watt)
+- Resource utilization (% of provisioned capacity used)
+- Waste reduction (unused resources eliminated)
+
+**Low-Carbon AWS Regions (as of 2024):**
+- eu-west-1 (Ireland) - 100% renewable energy
+- ca-central-1 (Canada) - 100% renewable energy
+- us-west-2 (Oregon) - 95% renewable energy
+- eu-north-1 (Stockholm) - 100% renewable energy
+
+**Sustainability Best Practices:**
+- Use Graviton instances (20% better energy efficiency)
+- Enable auto-scaling to match demand
+- Right-size instances based on actual usage
+- Use serverless for variable workloads
+- Choose low-carbon regions when latency permits
+- Implement data lifecycle policies to reduce storage waste
+- Use spot instances for fault-tolerant workloads (utilize spare capacity)
+
+### Summary
+
+Mode-aware sustainability reviews ensure that Kiro provides the right level of detail for each situation:
+
+- **Simple Mode:** Fast, prescriptive, no context - perfect for CI/CD and quick checks
+- **Context-Aware Mode:** Balanced, conditional, with context - ideal for interactive production reviews
+- **Full Analysis Mode:** Comprehensive, detailed, with matrices - best for major architecture decisions and sustainability planning
+
+Always announce the mode at the start of a review and allow users to switch modes if they need more or less detail. Preserve context when switching modes to avoid re-asking questions.

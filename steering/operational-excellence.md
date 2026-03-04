@@ -2272,3 +2272,824 @@ This guide covers:
 - Correlation IDs for request tracking
 - Instrumentation best practices
 
+
+1. **Conduct Post-Incident Reviews** - Learn from every incident
+2. **Automate Improvements** - Continuously automate repetitive tasks
+3. **Share Knowledge** - Document and share learnings across teams
+4. **Allocate Time** - Dedicate time for operational improvements
+
+## Context-Aware Trade-Off Guidance
+
+### Understanding Your Operational Context
+
+Before implementing operational excellence practices, assess your context to make appropriate trade-offs:
+
+#### Context Assessment Questions
+
+**Team Size and Maturity**
+- How many engineers are on your team? (1-5, 6-20, 21-50, 50+)
+- What is your team's operational maturity level? (Startup/Early, Growing, Mature, Enterprise)
+- How many on-call engineers do you have?
+- What is your team's experience with AWS operations?
+
+**Business Requirements**
+- What are your availability requirements? (Best effort, 99%, 99.9%, 99.99%, 99.999%)
+- What is your acceptable downtime per month? (Hours, minutes, seconds)
+- What is your budget for operational tooling? (Minimal, Moderate, Significant)
+- How critical is this workload to your business? (Internal tool, Customer-facing, Business-critical, Mission-critical)
+
+**Current State**
+- What is your current deployment frequency? (Monthly, Weekly, Daily, Multiple per day)
+- What is your current mean time to recovery (MTTR)? (Hours, <1 hour, <30 min, <15 min)
+- Do you have existing monitoring and alerting? (None, Basic, Comprehensive)
+- Do you have existing CI/CD pipelines? (None, Basic, Advanced)
+
+### Trade-Off Decision Framework
+
+#### Trade-Off 1: Observability Depth vs. Cost and Complexity
+
+**The Trade-Off:**
+Comprehensive observability (detailed logging, distributed tracing, custom metrics) provides better visibility but increases costs and operational complexity.
+
+**Cost Impact:**
+- Basic CloudWatch Logs: $0.50/GB ingested + $0.03/GB stored
+- X-Ray tracing: $5 per million traces + $0.50 per million traces retrieved
+- CloudWatch custom metrics: $0.30 per metric per month
+- Third-party APM tools: $15-100 per host per month
+
+**Complexity Impact:**
+- Instrumentation code in application
+- Additional dependencies and libraries
+- Learning curve for team
+- More dashboards and alerts to maintain
+
+**Context-Based Recommendations:**
+
+**Startup / Small Team (1-5 engineers) / Best Effort Availability:**
+```
+Recommended Approach: Minimal Observability
+- Use CloudWatch Logs with 7-day retention
+- Basic CloudWatch metrics (CPU, memory, disk)
+- Simple CloudWatch alarms for critical issues
+- No distributed tracing initially
+- Cost: ~$50-200/month
+- Setup time: 1-2 days
+
+Why: Limited team bandwidth, focus on product development, acceptable to have longer MTTR
+```
+
+**Growing Team (6-20 engineers) / 99.9% Availability:**
+```
+Recommended Approach: Balanced Observability
+- CloudWatch Logs with 30-day retention
+- Structured logging with correlation IDs
+- X-Ray tracing for critical paths only (5-10% sampling)
+- CloudWatch dashboards for key metrics
+- Composite alarms to reduce noise
+- Cost: $500-2,000/month
+- Setup time: 1-2 weeks
+
+Why: Need faster troubleshooting, can afford moderate costs, team can handle moderate complexity
+```
+
+**Mature Team (21-50 engineers) / 99.99% Availability:**
+```
+Recommended Approach: Comprehensive Observability
+- CloudWatch Logs with 90-day retention
+- Full distributed tracing with X-Ray (100% sampling)
+- Custom business metrics and dashboards
+- Anomaly detection for key metrics
+- Integration with incident management (PagerDuty)
+- Cost: $2,000-10,000/month
+- Setup time: 2-4 weeks
+
+Why: Need rapid incident response, can afford higher costs, team has expertise to leverage advanced tools
+```
+
+**Enterprise Team (50+ engineers) / 99.999% Availability:**
+```
+Recommended Approach: Enterprise-Grade Observability
+- Centralized logging with long-term retention (1+ year)
+- Full distributed tracing with advanced APM
+- Real-time anomaly detection and ML-based alerting
+- Service mesh observability
+- Dedicated observability team
+- Cost: $10,000-50,000+/month
+- Setup time: 1-3 months
+
+Why: Mission-critical workloads, regulatory requirements, dedicated resources for operations
+```
+
+**Decision Matrix:**
+
+| Team Size | Availability | Monthly Budget | Recommended Observability Level | Expected MTTR |
+|-----------|-------------|----------------|--------------------------------|---------------|
+| 1-5 | Best effort | <$500 | Minimal (CloudWatch basics) | 2-4 hours |
+| 1-5 | 99% | $500-1K | Basic (Logs + basic metrics) | 1-2 hours |
+| 6-20 | 99.9% | $1K-5K | Balanced (Logs + selective tracing) | 30-60 min |
+| 21-50 | 99.99% | $5K-20K | Comprehensive (Full tracing + custom metrics) | 15-30 min |
+| 50+ | 99.999% | $20K+ | Enterprise (Advanced APM + ML) | <15 min |
+
+**When to Upgrade Your Observability:**
+- MTTR consistently exceeds your SLA
+- Incidents are discovered by customers, not monitoring
+- Team spends >20% of time troubleshooting
+- You're growing from one tier to the next
+- Regulatory requirements demand it
+
+#### Trade-Off 2: Automation Level vs. Initial Investment
+
+**The Trade-Off:**
+High automation reduces operational toil and errors but requires significant upfront investment in tooling, testing, and training.
+
+**Time Investment:**
+- Manual operations: 0 setup time, high ongoing time
+- Basic automation (scripts): 1-2 weeks setup, moderate ongoing time
+- CI/CD pipeline: 2-4 weeks setup, low ongoing time
+- Full GitOps + IaC: 1-3 months setup, minimal ongoing time
+
+**Complexity Impact:**
+- More tools to learn and maintain
+- Need for version control and code review processes
+- Requires testing infrastructure
+- Potential for automation failures
+
+**Context-Based Recommendations:**
+
+**Startup / Proof of Concept / <10 Deployments per Year:**
+```
+Recommended Approach: Manual with Documentation
+- Document deployment steps in runbooks
+- Use AWS Console for infrastructure changes
+- Manual testing before deployment
+- Time investment: 1-2 days for documentation
+- Ongoing time: 2-4 hours per deployment
+
+Why: Low deployment frequency doesn't justify automation investment, focus on product-market fit
+Acceptable: Manual deployments are fine when deploying monthly or less
+```
+
+**Growing Product / 10-50 Deployments per Year:**
+```
+Recommended Approach: Basic Automation
+- Infrastructure as Code (Terraform/CloudFormation)
+- Basic CI/CD pipeline (GitHub Actions/CodePipeline)
+- Automated testing (unit + integration)
+- Manual approval for production
+- Time investment: 2-4 weeks
+- Ongoing time: 30-60 min per deployment
+
+Why: Deployment frequency increasing, automation ROI becomes positive, reduce human errors
+```
+
+**Established Product / 50-200 Deployments per Year:**
+```
+Recommended Approach: Advanced Automation
+- Full GitOps workflow
+- Automated deployment with canary/blue-green
+- Automated rollback on failure
+- Comprehensive test automation
+- Infrastructure drift detection
+- Time investment: 1-2 months
+- Ongoing time: 15-30 min per deployment
+
+Why: High deployment frequency, automation pays for itself quickly, need for reliability
+```
+
+**High-Velocity Team / 200+ Deployments per Year:**
+```
+Recommended Approach: Full Automation
+- Continuous deployment (no manual approval)
+- Feature flags for gradual rollout
+- Automated chaos engineering
+- Self-service infrastructure provisioning
+- Automated compliance checks
+- Time investment: 2-3 months
+- Ongoing time: <15 min per deployment
+
+Why: Multiple deployments per day, manual processes are bottleneck, need for speed and safety
+```
+
+**ROI Calculation Example:**
+
+Manual deployment: 4 hours per deployment
+Automated deployment: 30 minutes per deployment
+Time saved: 3.5 hours per deployment
+
+If you deploy 50 times per year:
+- Time saved: 175 hours per year
+- At $100/hour: $17,500 saved per year
+- Automation setup: 80 hours ($8,000)
+- ROI: Positive after 6 months
+
+**Decision Matrix:**
+
+| Deployment Frequency | Team Size | Recommended Automation | Setup Time | ROI Timeline |
+|---------------------|-----------|----------------------|------------|--------------|
+| <10/year | 1-5 | Manual + Runbooks | 1-2 days | N/A (not worth it) |
+| 10-50/year | 1-10 | Basic CI/CD | 2-4 weeks | 6-12 months |
+| 50-200/year | 5-20 | Advanced CI/CD | 1-2 months | 3-6 months |
+| 200+/year | 10+ | Full Automation | 2-3 months | 1-3 months |
+
+#### Trade-Off 3: Incident Response Sophistication vs. Team Overhead
+
+**The Trade-Off:**
+Sophisticated incident response (on-call rotations, runbooks, post-mortems, automated remediation) improves MTTR but requires significant team overhead and process discipline.
+
+**Team Overhead:**
+- On-call rotation: 1-2 hours per week per engineer
+- Runbook maintenance: 2-4 hours per month
+- Post-incident reviews: 2-4 hours per incident
+- Incident response training: 4-8 hours per quarter
+
+**Context-Based Recommendations:**
+
+**Small Team (1-5 engineers) / Internal Tools:**
+```
+Recommended Approach: Lightweight Incident Response
+- No formal on-call rotation (best effort)
+- Basic runbooks for critical issues
+- Informal post-incident discussions
+- Email/Slack alerts
+- Overhead: 2-4 hours per month
+
+Why: Limited team size, internal users can tolerate downtime, focus on building product
+Acceptable: Best-effort response for non-critical workloads
+```
+
+**Medium Team (6-20 engineers) / Customer-Facing:**
+```
+Recommended Approach: Structured Incident Response
+- On-call rotation (1 week per engineer per quarter)
+- Comprehensive runbooks for common issues
+- Post-incident reviews for major incidents
+- PagerDuty or similar for alerting
+- Incident severity levels
+- Overhead: 4-8 hours per month per engineer
+
+Why: Customer-facing requires faster response, team large enough to share on-call burden
+```
+
+**Large Team (21-50 engineers) / Business-Critical:**
+```
+Recommended Approach: Advanced Incident Response
+- 24/7 on-call rotation with escalation
+- Automated runbooks with Systems Manager
+- Post-incident reviews for all incidents
+- Incident commander role
+- Blameless culture and learning
+- Overhead: 8-12 hours per month per engineer
+
+Why: Business-critical workloads need rapid response, team can support sophisticated processes
+```
+
+**Enterprise Team (50+ engineers) / Mission-Critical:**
+```
+Recommended Approach: Enterprise Incident Response
+- Dedicated SRE/operations team
+- Automated incident detection and remediation
+- Comprehensive post-incident review process
+- Regular game days and chaos engineering
+- Incident metrics and continuous improvement
+- Overhead: Dedicated team (not overhead for product engineers)
+
+Why: Mission-critical workloads, regulatory requirements, scale justifies dedicated team
+```
+
+**Decision Matrix:**
+
+| Workload Criticality | Team Size | Acceptable MTTR | Recommended Approach | Team Overhead |
+|---------------------|-----------|----------------|---------------------|---------------|
+| Internal tool | 1-5 | 4-8 hours | Lightweight (best effort) | 2-4 hrs/month |
+| Customer-facing | 6-20 | 1-2 hours | Structured (on-call rotation) | 4-8 hrs/month |
+| Business-critical | 21-50 | 15-30 min | Advanced (24/7 on-call) | 8-12 hrs/month |
+| Mission-critical | 50+ | <15 min | Enterprise (dedicated team) | Dedicated team |
+
+**When to Upgrade Your Incident Response:**
+- MTTR consistently exceeds business requirements
+- Incidents cause significant customer impact
+- Team burnout from unstructured on-call
+- Regulatory requirements demand formal processes
+- Same incidents repeat due to lack of post-mortems
+
+#### Trade-Off 4: Deployment Strategy Sophistication vs. Complexity
+
+**The Trade-Off:**
+Advanced deployment strategies (blue/green, canary, feature flags) reduce deployment risk but add complexity to infrastructure and deployment process.
+
+**Complexity Impact:**
+- Blue/green: 2x infrastructure cost during deployment, routing complexity
+- Canary: Metrics analysis, automated rollback logic, traffic splitting
+- Feature flags: Code complexity, flag management overhead, technical debt
+
+**Context-Based Recommendations:**
+
+**Low-Risk Changes / Infrequent Deployments:**
+```
+Recommended Approach: Simple Rolling Deployment
+- Deploy to instances one at a time
+- Manual validation after deployment
+- Manual rollback if needed
+- Complexity: Low
+- Cost: No additional cost
+- Deployment time: 15-30 minutes
+
+Why: Low deployment frequency, low risk, simple is better
+Acceptable: For internal tools or low-traffic applications
+```
+
+**Moderate-Risk Changes / Weekly Deployments:**
+```
+Recommended Approach: Blue/Green Deployment
+- Deploy to new environment (green)
+- Test green environment
+- Switch traffic from blue to green
+- Keep blue for quick rollback
+- Complexity: Moderate
+- Cost: 2x infrastructure during deployment (15-30 min)
+- Deployment time: 30-60 minutes
+
+Why: Enables instant rollback, worth the temporary cost increase
+```
+
+**High-Risk Changes / Daily Deployments:**
+```
+Recommended Approach: Canary Deployment
+- Deploy to small percentage of instances (5-10%)
+- Monitor metrics for 15-30 minutes
+- Gradually increase traffic (25%, 50%, 100%)
+- Automated rollback on metric degradation
+- Complexity: High
+- Cost: Minimal additional cost
+- Deployment time: 1-2 hours
+
+Why: Limits blast radius, catches issues before full rollout, worth the complexity
+```
+
+**Feature Releases / Continuous Deployment:**
+```
+Recommended Approach: Feature Flags + Canary
+- Deploy code with feature disabled
+- Enable feature for internal users first
+- Gradually roll out to customers (1%, 10%, 50%, 100%)
+- A/B testing capabilities
+- Instant feature disable without deployment
+- Complexity: Very High
+- Cost: Feature flag service ($50-500/month)
+- Deployment time: Code deployed quickly, feature rollout over days
+
+Why: Decouple deployment from release, enable experimentation, essential for high-velocity teams
+```
+
+**Decision Matrix:**
+
+| Deployment Frequency | Risk Tolerance | Recommended Strategy | Complexity | Additional Cost |
+|---------------------|---------------|---------------------|------------|----------------|
+| Monthly | High | Rolling | Low | $0 |
+| Weekly | Moderate | Blue/Green | Moderate | Temporary 2x |
+| Daily | Low | Canary | High | Minimal |
+| Multiple/day | Very Low | Feature Flags + Canary | Very High | $50-500/month |
+
+**When to Upgrade Your Deployment Strategy:**
+- Deployments frequently cause incidents
+- Rollbacks are slow and painful
+- Need to deploy during business hours
+- Want to enable A/B testing
+- Regulatory requirements for gradual rollout
+
+#### Trade-Off 5: Managed Services vs. Self-Hosted Operations
+
+**The Trade-Off:**
+Managed services (RDS, ECS Fargate, Lambda) reduce operational burden but cost more and offer less control than self-hosted alternatives (EC2 with databases, ECS EC2, EC2 with application servers).
+
+**Cost Comparison Example (PostgreSQL database):**
+- RDS db.t3.medium: $70/month + storage
+- EC2 t3.medium with PostgreSQL: $30/month + storage
+- Cost difference: 2.3x more for RDS
+
+**Operational Burden:**
+- RDS: AWS handles patching, backups, failover (1-2 hours/month)
+- Self-hosted: You handle patching, backups, failover (8-16 hours/month)
+
+**Context-Based Recommendations:**
+
+**Startup / Small Team (1-5 engineers):**
+```
+Recommended Approach: Maximize Managed Services
+- RDS for databases (not self-hosted PostgreSQL)
+- ECS Fargate for containers (not ECS EC2)
+- Lambda for event-driven workloads
+- Managed ElastiCache (not self-hosted Redis)
+- Cost: 2-3x more than self-hosted
+- Operational time saved: 20-40 hours/month
+
+Why: Team time is most valuable resource, focus on product not operations
+ROI: Engineer time worth more than cost savings
+```
+
+**Growing Team (6-20 engineers) / Cost-Conscious:**
+```
+Recommended Approach: Hybrid Approach
+- RDS for production databases (reliability critical)
+- ECS EC2 for containers (cost optimization)
+- Lambda for event-driven workloads
+- Self-hosted Redis on EC2 (if expertise exists)
+- Cost: 1.5-2x more than fully self-hosted
+- Operational time: 10-20 hours/month
+
+Why: Balance cost and operational burden, use managed services where reliability is critical
+```
+
+**Mature Team (21-50 engineers) / Specialized Needs:**
+```
+Recommended Approach: Selective Self-Hosting
+- RDS for most databases
+- Self-hosted databases for specialized needs (Cassandra, MongoDB)
+- ECS EC2 with auto-scaling
+- Dedicated operations engineers
+- Cost: 1.2-1.5x more than fully self-hosted
+- Operational time: Dedicated team
+
+Why: Have expertise to run specialized infrastructure, cost optimization matters at scale
+```
+
+**Enterprise Team (50+ engineers) / Regulatory Requirements:**
+```
+Recommended Approach: Context-Dependent
+- Managed services where possible
+- Self-hosted for regulatory/compliance requirements
+- Dedicated SRE team
+- Custom tooling and automation
+- Cost: Varies based on requirements
+- Operational time: Dedicated team
+
+Why: Regulatory requirements may mandate self-hosting, have resources to do it well
+```
+
+**Decision Matrix:**
+
+| Team Size | Operational Expertise | Budget Sensitivity | Recommended Approach | Cost Multiplier |
+|-----------|----------------------|-------------------|---------------------|----------------|
+| 1-5 | Low | Low | Maximize managed services | 2-3x |
+| 6-20 | Moderate | Moderate | Hybrid (managed for critical) | 1.5-2x |
+| 21-50 | High | High | Selective self-hosting | 1.2-1.5x |
+| 50+ | Very High | Varies | Context-dependent | Varies |
+
+**When to Choose Managed Services:**
+- Small team with limited operational expertise
+- Rapid growth and need to scale quickly
+- Reliability is more important than cost
+- Want to focus on product, not infrastructure
+- Don't have 24/7 on-call coverage
+
+**When to Choose Self-Hosted:**
+- Large team with dedicated operations engineers
+- Cost optimization is critical (at scale)
+- Need specialized configurations not available in managed services
+- Regulatory requirements mandate specific configurations
+- Have expertise and tooling to operate reliably
+
+### Real-World Trade-Off Scenarios
+
+#### Scenario 1: Startup with Limited Budget
+
+**Context:**
+- Team: 3 engineers
+- Budget: $500/month for operations
+- Availability requirement: Best effort (internal tool)
+- Deployment frequency: Weekly
+
+**Recommended Approach:**
+```
+Observability:
+- CloudWatch Logs with 7-day retention ($50/month)
+- Basic CloudWatch metrics (free tier)
+- Simple alarms for critical issues
+- No distributed tracing
+
+Automation:
+- Manual deployments with documented runbooks
+- Basic GitHub Actions for testing
+- No CI/CD initially
+
+Incident Response:
+- Best-effort response (no on-call)
+- Email alerts
+- Informal post-incident discussions
+
+Infrastructure:
+- Maximize managed services (RDS, Lambda, Fargate)
+- Accept 2-3x cost premium for reduced operational burden
+
+Total Cost: ~$400/month
+Operational Time: 4-8 hours/month
+MTTR: 2-4 hours (acceptable for internal tool)
+```
+
+**Why This Works:**
+- Minimal operational burden allows focus on product
+- Managed services reduce risk of outages
+- Simple approach matches team size and expertise
+- Cost is acceptable for early stage
+
+**When to Evolve:**
+- Team grows to 5+ engineers
+- Tool becomes customer-facing
+- Deployment frequency increases to daily
+- Budget increases to $2K+/month
+
+#### Scenario 2: Growing SaaS Company
+
+**Context:**
+- Team: 15 engineers
+- Budget: $5,000/month for operations
+- Availability requirement: 99.9% (customer-facing)
+- Deployment frequency: Daily
+
+**Recommended Approach:**
+```
+Observability:
+- CloudWatch Logs with 30-day retention ($500/month)
+- X-Ray tracing for critical paths (10% sampling) ($200/month)
+- CloudWatch dashboards and composite alarms
+- Anomaly detection for key metrics
+
+Automation:
+- Full CI/CD pipeline with automated testing
+- Blue/green deployments for zero downtime
+- Infrastructure as Code (Terraform)
+- Automated rollback on failure
+
+Incident Response:
+- On-call rotation (1 week per engineer per quarter)
+- PagerDuty for alerting ($500/month)
+- Comprehensive runbooks
+- Post-incident reviews for major incidents
+
+Infrastructure:
+- Hybrid approach (RDS for databases, ECS EC2 for containers)
+- Auto-scaling for cost optimization
+- Multi-AZ for high availability
+
+Total Cost: ~$4,500/month
+Operational Time: 6-10 hours/month per engineer
+MTTR: 30-60 minutes
+```
+
+**Why This Works:**
+- Balanced approach for growing team
+- Automation ROI is positive with daily deployments
+- Observability enables fast troubleshooting
+- Cost is reasonable for revenue stage
+
+**When to Evolve:**
+- Team grows to 30+ engineers
+- Availability requirement increases to 99.99%
+- Need for advanced features (canary, feature flags)
+- Budget increases to $20K+/month
+
+#### Scenario 3: Enterprise with Mission-Critical Workload
+
+**Context:**
+- Team: 100 engineers (10 dedicated SRE)
+- Budget: $50,000/month for operations
+- Availability requirement: 99.99% (business-critical)
+- Deployment frequency: Multiple per day
+
+**Recommended Approach:**
+```
+Observability:
+- Centralized logging with 1-year retention ($5,000/month)
+- Full distributed tracing with advanced APM ($10,000/month)
+- Real-time anomaly detection with ML
+- Custom business metrics and dashboards
+- Service mesh observability
+
+Automation:
+- Continuous deployment with feature flags
+- Canary deployments with automated rollback
+- Chaos engineering and game days
+- Self-service infrastructure provisioning
+- Automated compliance checks
+
+Incident Response:
+- Dedicated SRE team (24/7 coverage)
+- Automated incident detection and remediation
+- Comprehensive post-incident review process
+- Incident commander training
+- Regular game days
+
+Infrastructure:
+- Mix of managed and self-hosted based on requirements
+- Multi-region for disaster recovery
+- Advanced auto-scaling and capacity planning
+- Dedicated operations tooling
+
+Total Cost: ~$45,000/month
+Operational Time: Dedicated SRE team
+MTTR: <15 minutes
+```
+
+**Why This Works:**
+- Enterprise-grade reliability for mission-critical workload
+- Dedicated team can handle sophisticated processes
+- Advanced tooling enables rapid incident response
+- Cost is justified by business criticality
+
+### Trade-Off Summary Table
+
+| Aspect | Startup (1-5) | Growing (6-20) | Mature (21-50) | Enterprise (50+) |
+|--------|--------------|----------------|----------------|------------------|
+| **Observability** | Minimal | Balanced | Comprehensive | Enterprise |
+| Monthly Cost | $50-200 | $500-2K | $2K-10K | $10K-50K+ |
+| MTTR | 2-4 hours | 30-60 min | 15-30 min | <15 min |
+| **Automation** | Manual + Docs | Basic CI/CD | Advanced CI/CD | Full Automation |
+| Setup Time | 1-2 days | 2-4 weeks | 1-2 months | 2-3 months |
+| Deploy Time | 2-4 hours | 30-60 min | 15-30 min | <15 min |
+| **Incident Response** | Best effort | Structured | Advanced | Enterprise |
+| Team Overhead | 2-4 hrs/month | 4-8 hrs/month | 8-12 hrs/month | Dedicated team |
+| On-call | No | Yes (rotation) | Yes (24/7) | Dedicated team |
+| **Infrastructure** | Managed | Hybrid | Selective | Context-dependent |
+| Cost Multiplier | 2-3x | 1.5-2x | 1.2-1.5x | Varies |
+| Ops Time | 4-8 hrs/month | 10-20 hrs/month | Dedicated | Dedicated team |
+
+### Key Principles for Trade-Off Decisions
+
+1. **Start Simple, Evolve as Needed**
+   - Don't over-engineer for future scale
+   - Add complexity only when pain points emerge
+   - Measure before optimizing
+
+2. **Match Operational Maturity to Team Size**
+   - Small teams: Focus on product, use managed services
+   - Medium teams: Balance cost and operational burden
+   - Large teams: Optimize for efficiency and reliability
+
+3. **Align with Business Requirements**
+   - Internal tools: Best effort is often acceptable
+   - Customer-facing: Invest in reliability
+   - Business-critical: Spare no expense for availability
+
+4. **Calculate ROI Before Investing**
+   - Automation: Time saved × hourly rate vs. setup cost
+   - Observability: Reduced MTTR × incident frequency vs. tool cost
+   - Managed services: Operational time saved × hourly rate vs. cost premium
+
+5. **Revisit Decisions Regularly**
+   - Quarterly review of operational practices
+   - Adjust as team grows and requirements change
+   - Don't be afraid to simplify if over-engineered
+
+### When to Prioritize Operational Excellence Over Other Pillars
+
+**Prioritize Operational Excellence When:**
+- Frequent incidents impact customer trust
+- Team spends >50% time on operational toil
+- MTTR consistently exceeds SLA
+- Deployment fear prevents innovation
+- Same issues repeat due to lack of learning
+
+**Acceptable to Defer Operational Excellence When:**
+- Early-stage startup finding product-market fit
+- Internal tools with tolerant users
+- Temporary proof of concept
+- Team size <5 with limited bandwidth
+- Other pillars (Security, Reliability) are more critical
+
+**Balance Operational Excellence With:**
+- **Cost Optimization**: Use managed services early, optimize later at scale
+- **Performance**: Don't over-monitor, focus on key metrics
+- **Security**: Security is non-negotiable, operations can be best-effort
+- **Reliability**: Reliability enables operations, invest in both together
+
+### Conclusion
+
+Operational excellence is not one-size-fits-all. The right approach depends on your team size, operational maturity, business requirements, and budget. Start with the minimum viable operational practices for your context, measure the impact, and evolve as your needs grow. Remember: the goal is to deliver business value, not to implement every operational best practice.
+
+**Key Takeaway:** It's acceptable to have manual processes, basic monitoring, and best-effort incident response when you're a small team building an internal tool. It's not acceptable to have the same practices when you're a large team running a business-critical customer-facing application. Know your context, make informed trade-offs, and evolve your operational practices as you grow.
+
+
+---
+
+## Mode-Aware Guidance for Operational Excellence Reviews
+
+This section guides Kiro on how to adapt Operational Excellence Pillar reviews based on the current review mode.
+
+### Simple Mode - Operational Excellence Reviews
+
+**Token Budget:** 17-25K | **Latency:** 2.5-6s | **Use:** CI/CD, quick checks, dev reviews
+
+**What to Include:**
+- Direct operational violation identification (missing logging, no monitoring, no health checks)
+- Prescriptive recommendations without trade-off discussion
+- Standard risk levels: High (no logging/monitoring in prod), Medium (incomplete observability), Low (missing tags)
+- Code examples showing fixes
+
+**What to EXCLUDE:**
+- Context questions about team size, operational maturity, or incident history
+- Trade-off discussions (observability cost vs. operational visibility)
+- Alternative approaches or decision matrices
+
+**Example Output:**
+```
+❌ HIGH RISK: No CloudWatch logging configured for Lambda function
+Location: lambda.tf:23
+Recommendation: Enable CloudWatch Logs with 7-day retention
+Remediation: Add logging configuration to Lambda function
+```
+
+### Context-Aware Mode - Operational Excellence Reviews
+
+**Token Budget:** 35-50K | **Latency:** 4-8s | **Use:** Interactive sessions, production reviews
+
+**What to Include:**
+- Context questions (3-5): Team size, operational maturity, incident frequency, on-call setup, budget
+- Conditional recommendations based on context
+- Trade-off explanations (observability cost vs. operational visibility, automation complexity vs. manual effort)
+- Cost-benefit analysis for key recommendations
+- Alternative approaches with pros/cons
+
+**Example Output:**
+```
+⚠️ CONTEXT-DEPENDENT: No distributed tracing configured
+
+Context Questions:
+- What's your team size? (1-5/6-20/20+)
+- How often do you have incidents? (daily/weekly/monthly/rarely)
+- What's your operational maturity? (startup/growth/enterprise)
+
+Conditional Guidance:
+- FOR microservices with frequent incidents: X-Ray tracing REQUIRED
+  - Cost: $5-20/month
+  - Benefit: 50-80% faster incident resolution
+  - Complexity: Low (AWS-managed)
+  
+- FOR monolith with rare incidents: Basic logging sufficient
+  - Cost: $0-5/month
+  - Trade-off: Slower troubleshooting, acceptable for rare incidents
+
+Recommendation: Based on architecture and incident frequency, choose appropriate observability level.
+```
+
+### Full Analysis Mode - Operational Excellence Reviews
+
+**Token Budget:** 70-95K | **Latency:** 5-10s | **Use:** Major decisions, operational planning
+
+**What to Include:**
+- Comprehensive context gathering (10+ questions including MTTR, MTTD, incident costs, team structure)
+- Decision matrices comparing 3-5 observability approaches
+- Quantitative cost-benefit analysis with incident cost calculations
+- Multi-pillar impact analysis (operational excellence vs. cost vs. performance)
+- Scenario matching (startup/growth/enterprise operational maturity)
+- Long-term operational implications and team scaling
+- Phased implementation roadmap
+
+**Example Output:**
+```
+🔍 COMPREHENSIVE ANALYSIS: Observability Strategy
+
+Decision Matrix: Observability Options
+| Option | Visibility | Cost | Complexity | MTTR | Best For |
+|--------|-----------|------|------------|------|----------|
+| Basic Logs | ⭐⭐ | $ | ⭐⭐⭐⭐⭐ | 60 min | Dev/Test |
+| Logs + Metrics | ⭐⭐⭐ | $$ | ⭐⭐⭐⭐ | 30 min | Small prod |
+| Full Stack (Logs/Metrics/Traces) | ⭐⭐⭐⭐⭐ | $$$ | ⭐⭐⭐ | 10 min | Microservices |
+| Third-party APM | ⭐⭐⭐⭐⭐ | $$$$ | ⭐⭐ | 5 min | Enterprise |
+
+Recommended: Full Stack Observability (Logs + Metrics + X-Ray)
+
+Cost-Benefit Analysis:
+- Observability Cost: $50/month
+- Current MTTR: 60 minutes
+- Improved MTTR: 10 minutes (6x faster)
+- Incident Cost: $500/hour
+- Incidents: 4/month average
+- Savings: $1,667/month in reduced downtime
+- Net Benefit: $1,617/month positive ROI
+
+[Detailed pillar impact analysis, trade-off scenarios, implementation roadmap]
+```
+
+### Mode Selection
+
+**Simple Mode:** CI/CD, dev files, "quick review"
+**Context-Aware Mode:** Production files, interactive sessions, "review with context"
+**Full Analysis Mode:** Explicit request for "full analysis", operational planning
+
+### Best Practices by Mode
+
+**Simple Mode:** Focus on missing observability, prescriptive fixes, no context questions
+**Context-Aware Mode:** Ask 3-5 context questions, explain trade-offs, provide alternatives
+**Full Analysis Mode:** Comprehensive analysis, decision matrices, MTTR/MTTD calculations, roadmap
+
+### Common Scenarios by Mode
+
+**Missing Logging:**
+- Simple: "Enable CloudWatch Logs with 7-day retention"
+- Context-Aware: "For production, structured logging REQUIRED. For dev, basic logging sufficient"
+- Full Analysis: "[Decision matrix comparing logging approaches with cost, visibility, retention strategies]"
+
+**No Monitoring:**
+- Simple: "Add CloudWatch alarms for CPU, memory, error rate"
+- Context-Aware: "For critical services, comprehensive monitoring REQUIRED. For internal tools, basic metrics sufficient"
+- Full Analysis: "[Decision matrix comparing monitoring solutions with MTTR impact, cost, and team size considerations]"

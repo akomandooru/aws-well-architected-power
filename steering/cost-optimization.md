@@ -2549,6 +2549,640 @@ resource "aws_lambda_function" "stop_idle_instances" {
 - [AWS Well-Architected Labs - Cost Optimization](https://wellarchitectedlabs.com/cost/)
 
 
+## Context-Aware Cost Optimization Trade-Off Guidance
+
+Cost optimization is not about minimizing costs at all costs—it's about achieving business outcomes at the lowest price point while meeting functional requirements. The **right** level of cost optimization depends on your specific context: environment type, availability requirements, budget constraints, and business priorities.
+
+### Context Questions for Cost Optimization Recommendations
+
+Before making cost optimization recommendations, gather context:
+
+1. **Environment Type**: Development, staging, or production?
+2. **Availability Requirements**: What's your SLA? (99%, 99.9%, 99.99%)
+3. **Budget Constraints**: Tight, moderate, or flexible?
+4. **Data Sensitivity**: Public, internal, confidential, or regulated?
+5. **Performance Requirements**: Latency-sensitive or batch processing?
+6. **Business Stage**: Startup/MVP, growth, or enterprise?
+
+### Trade-Off 1: Single-AZ vs. Multi-AZ (Cost vs. Reliability)
+
+#### Context-Dependent Availability Decisions
+
+**Development Environment**:
+```
+Recommendation: Single-AZ is ACCEPTABLE for cost savings.
+
+Single-AZ Configuration:
+- Cost: 50% reduction (no cross-AZ data transfer, single instance)
+- Availability: ~99.5% (single AZ availability)
+- Recovery: Manual restart in another AZ if needed
+- Downtime Impact: Low (dev environment, no customer impact)
+
+Trade-off: 50% cost savings vs. occasional dev environment downtime.
+Recommendation: Use Single-AZ for dev to maximize cost savings.
+
+Example:
+- Multi-AZ RDS: $200/month
+- Single-AZ RDS: $100/month
+- Savings: $100/month (50%)
+```
+
+**Staging Environment**:
+```
+Recommendation: Single-AZ or Multi-AZ depending on testing needs.
+
+Options:
+1. Single-AZ (Cost-Optimized)
+   - Cost: $100/month
+   - Use for: Functional testing, performance testing
+   - Risk: Cannot test failover scenarios
+   - Best for: Budget-constrained teams
+
+2. Multi-AZ (Production-Like)
+   - Cost: $200/month
+   - Use for: Failover testing, pre-production validation
+   - Benefit: Test production scenarios
+   - Best for: Critical applications
+
+Trade-off: $100/month savings vs. production-like testing.
+Recommendation: Use Single-AZ for staging unless you need to test failover.
+```
+
+**Production Environment - Internal Tools (99% SLA)**:
+```
+Recommendation: Multi-AZ is RECOMMENDED but not required.
+
+Options:
+1. Single-AZ with Automated Failover
+   - Cost: $100/month + automation
+   - Availability: ~99.5%
+   - Recovery: 5-15 minutes (automated)
+   - Acceptable for: Internal tools, non-critical applications
+   - Risk: Brief downtime during AZ failure
+
+2. Multi-AZ
+   - Cost: $200/month
+   - Availability: ~99.9%
+   - Recovery: Automatic (1-2 minutes)
+   - Best for: Important internal tools
+
+Trade-off: $100/month vs. 99.5% → 99.9% availability improvement.
+Recommendation: For internal tools with 99% SLA, Single-AZ with automation is acceptable.
+
+Calculation:
+- 99% SLA = 7.2 hours downtime/month acceptable
+- 99.5% availability = 3.6 hours downtime/month
+- 99.9% availability = 43 minutes downtime/month
+```
+
+**Production Environment - Customer-Facing (99.9%+ SLA)**:
+```
+Recommendation: Multi-AZ is REQUIRED (non-negotiable).
+
+REQUIRED Configuration:
+- Multi-AZ deployment for databases
+- Multi-AZ load balancers
+- Instances in multiple AZs
+- Auto Scaling across AZs
+
+Cost: 2x infrastructure + cross-AZ data transfer
+Availability: 99.9%+ (meets SLA)
+Recovery: Automatic (1-2 minutes)
+
+Trade-off: None - this is required to meet SLA commitments.
+
+Downtime Cost Analysis:
+- 1 hour outage cost: $10,000 - $100,000 (typical)
+- Multi-AZ additional cost: $100-500/month
+- ROI: Multi-AZ pays for itself if it prevents 1 outage per year
+```
+
+#### Decision Matrix: Single-AZ vs. Multi-AZ
+
+| Factor | Single-AZ | Multi-AZ |
+|--------|-----------|----------|
+| **Cost** | $100/month | $200/month |
+| **Availability** | ~99.5% | ~99.9% |
+| **Downtime/Month** | ~3.6 hours | ~43 minutes |
+| **Recovery Time** | 5-15 minutes | 1-2 minutes |
+| **Best For** | Dev, staging, internal tools | Production, customer-facing |
+| **SLA Support** | Up to 99% | 99.9%+ |
+| **Acceptable Risk** | Dev/test downtime | Customer-facing downtime |
+
+### Trade-Off 2: On-Demand vs. Reserved Instances vs. Spot (Cost vs. Flexibility)
+
+#### Context-Dependent Pricing Model Decisions
+
+**Unpredictable Workloads (Startup/MVP)**:
+```
+Recommendation: On-Demand for maximum flexibility.
+
+On-Demand Pricing:
+- Cost: $0.10/hour (baseline)
+- Commitment: None
+- Flexibility: Scale up/down anytime
+- Best for: Unpredictable traffic, rapid iteration
+
+Trade-off: Pay 30-70% more for flexibility during validation phase.
+Recommendation: Use On-Demand until usage patterns stabilize (3-6 months).
+
+Example:
+- On-Demand: $720/month (24/7 operation)
+- Reserved (1-year): $504/month (30% savings)
+- Savings: $216/month, but requires 1-year commitment
+```
+
+**Steady-State Workloads (Production)**:
+```
+Recommendation: Reserved Instances or Savings Plans for predictable baseline.
+
+Options:
+1. Reserved Instances (1-year, no upfront)
+   - Cost: 30% savings ($504/month vs. $720/month)
+   - Commitment: 1 year, specific instance type
+   - Flexibility: Low (locked to instance type)
+   - Best for: Stable workloads with known instance types
+
+2. Compute Savings Plans (1-year)
+   - Cost: 30% savings
+   - Commitment: 1 year, dollar amount
+   - Flexibility: High (any instance type, region)
+   - Best for: Workloads that may change instance types
+
+3. Reserved Instances (3-year, all upfront)
+   - Cost: 60% savings ($288/month vs. $720/month)
+   - Commitment: 3 years, upfront payment
+   - Flexibility: None
+   - Best for: Extremely stable workloads, strong cash position
+
+Trade-off: Commitment vs. savings.
+Recommendation: Start with 1-year Compute Savings Plans for flexibility.
+
+Budget Impact:
+- Tight budget: 1-year Savings Plan (30% savings, manageable commitment)
+- Flexible budget: 3-year Reserved (60% savings, maximum cost reduction)
+```
+
+**Variable Workloads with Baseline**:
+```
+Recommendation: Mix Reserved/Savings Plans for baseline + On-Demand for peaks.
+
+Strategy:
+- Reserved/Savings Plans: Cover 60-70% of baseline capacity
+- On-Demand: Handle traffic spikes and growth
+
+Example:
+- Baseline: 10 instances 24/7 → Reserved Instances
+- Peak: +5 instances during business hours → On-Demand
+- Cost: $5,040/month (Reserved) + $1,080/month (On-Demand) = $6,120/month
+- vs. All On-Demand: $10,800/month
+- Savings: $4,680/month (43%)
+
+Trade-off: Some commitment vs. significant savings.
+Recommendation: Reserve 60-70% of baseline, use On-Demand for peaks.
+```
+
+**Fault-Tolerant Workloads (Batch Processing, Dev/Test)**:
+```
+Recommendation: Spot Instances for up to 90% savings.
+
+Spot Instance Strategy:
+- Cost: $0.01-0.03/hour (90% savings vs. On-Demand)
+- Availability: Can be interrupted with 2-minute warning
+- Best for: Batch jobs, CI/CD, dev/test, stateless workloads
+
+Requirements for Spot:
+- Application handles interruptions gracefully
+- Work can be checkpointed and resumed
+- Not time-critical
+
+Example:
+- On-Demand: $720/month
+- Spot: $72/month
+- Savings: $648/month (90%)
+
+Trade-off: Interruption handling vs. massive cost savings.
+Recommendation: Use Spot for all fault-tolerant workloads.
+```
+
+#### Decision Matrix: Pricing Models
+
+| Workload Type | Pricing Model | Cost | Commitment | Flexibility | Savings |
+|---------------|---------------|------|------------|-------------|---------|
+| **Unpredictable** | On-Demand | $720/mo | None | High | 0% |
+| **Steady-State** | 1-yr Savings Plan | $504/mo | 1 year | Medium | 30% |
+| **Very Stable** | 3-yr Reserved | $288/mo | 3 years | Low | 60% |
+| **Variable** | Mixed (Reserved + On-Demand) | $612/mo | Partial | Medium | 15-30% |
+| **Fault-Tolerant** | Spot | $72/mo | None | Low | 90% |
+
+### Trade-Off 3: Instance Sizing (Cost vs. Performance)
+
+#### Context-Dependent Instance Sizing Decisions
+
+**Development Environment**:
+```
+Recommendation: Smallest instance that works (t3.micro, t3.small).
+
+Small Instance Strategy:
+- Cost: $7-15/month per instance
+- Performance: Adequate for development
+- Trade-off: Slower builds/tests vs. minimal cost
+
+Example:
+- t3.small: $15/month
+- t3.medium: $30/month
+- t3.large: $60/month
+
+Recommendation: Use t3.small for dev, accept slower performance.
+Savings: $45/month per developer (vs. t3.large)
+```
+
+**Production - Latency-Sensitive Application (< 100ms p99)**:
+```
+Recommendation: Right-size for performance, not cost.
+
+Performance-First Sizing:
+- Instance: c6g.xlarge (compute-optimized Graviton)
+- Cost: $100/month
+- Performance: <50ms p99 latency
+- Trade-off: Higher cost for better user experience
+
+vs. Cost-Optimized:
+- Instance: t4g.medium (burstable)
+- Cost: $25/month
+- Performance: 100-200ms p99 latency (bursting limits)
+- Risk: Poor user experience, customer churn
+
+Trade-off: $75/month vs. customer satisfaction.
+Recommendation: Invest in performance for customer-facing applications.
+
+ROI Calculation:
+- 1% customer churn from poor performance = $10,000/month revenue loss
+- Performance optimization cost: $75/month
+- ROI: 133x return on investment
+```
+
+**Production - Batch Processing (Not Time-Critical)**:
+```
+Recommendation: Smallest instance that completes within time window.
+
+Cost-Optimized Sizing:
+- Instance: t4g.medium
+- Cost: $25/month
+- Processing Time: 4 hours/day
+- Trade-off: Slower processing vs. lower cost
+
+vs. Performance-Optimized:
+- Instance: c6g.xlarge
+- Cost: $100/month
+- Processing Time: 1 hour/day
+- Benefit: Faster completion, but not required
+
+Trade-off: $75/month vs. 3 hours faster completion (not needed).
+Recommendation: Use smaller instance for batch jobs with flexible deadlines.
+```
+
+**Production - Variable Traffic (Bursty Workloads)**:
+```
+Recommendation: Burstable instances (t3/t4g) for cost efficiency.
+
+Burstable Instance Strategy:
+- Instance: t4g.medium
+- Cost: $25/month
+- Performance: Handles bursts up to 40% CPU baseline
+- Best for: Web servers, small databases, dev tools
+
+When to Upgrade to Fixed Performance:
+- Sustained CPU > 40% (burning through credits)
+- Unpredictable performance during bursts
+- Cost of t4g.medium with unlimited = cost of m6g.medium
+
+Trade-off: Burstable performance vs. 60% cost savings.
+Recommendation: Start with burstable, monitor CPU credits, upgrade if needed.
+```
+
+#### Decision Matrix: Instance Sizing
+
+| Use Case | Instance Type | Cost/Month | Performance | Best For |
+|----------|---------------|------------|-------------|----------|
+| **Development** | t3.small | $15 | Low | Dev/test environments |
+| **Low Traffic** | t4g.medium | $25 | Burstable | Small apps, variable traffic |
+| **Steady Traffic** | m6g.large | $60 | Consistent | Production apps |
+| **High Performance** | c6g.xlarge | $100 | High | Latency-sensitive apps |
+| **Memory-Intensive** | r6g.large | $100 | High memory | Databases, caching |
+| **Batch Processing** | t4g.medium | $25 | Adequate | Non-time-critical jobs |
+
+### Trade-Off 4: Managed Services vs. Self-Managed (Cost vs. Operational Overhead)
+
+#### Context-Dependent Service Management Decisions
+
+**Small Team (1-5 people), Tight Budget**:
+```
+Recommendation: Managed services despite higher per-unit cost.
+
+Managed Service Example (RDS):
+- Cost: $100/month
+- Operational Overhead: ~2 hours/month (monitoring, minor tuning)
+- Includes: Automated backups, patching, failover, monitoring
+
+vs. Self-Managed (EC2 + PostgreSQL):
+- Cost: $50/month (EC2 + EBS)
+- Operational Overhead: ~20 hours/month (setup, patching, backups, monitoring)
+- Engineer time cost: 20 hours × $100/hour = $2,000/month
+
+Trade-off: $50/month savings vs. $2,000/month in engineering time.
+Recommendation: Use managed services for small teams (10-40x ROI).
+
+Total Cost of Ownership:
+- Managed: $100/month
+- Self-Managed: $50/month + $2,000/month = $2,050/month
+- Savings with Managed: $1,950/month
+```
+
+**Large Team (20+ people), High Scale**:
+```
+Recommendation: Consider self-managed for cost optimization at scale.
+
+Self-Managed at Scale:
+- Cost: $5,000/month (EC2 + EBS for large cluster)
+- Operational Overhead: 1 dedicated engineer ($10,000/month)
+- Total: $15,000/month
+
+vs. Managed Service (RDS):
+- Cost: $25,000/month (large RDS instances)
+- Operational Overhead: ~10 hours/month ($1,000/month)
+- Total: $26,000/month
+
+Trade-off: $11,000/month savings vs. operational complexity.
+Recommendation: At scale, self-managed can be cost-effective with dedicated team.
+
+Break-Even Analysis:
+- Self-managed makes sense when: (Managed Cost - Self-Managed Cost) > Engineer Cost
+- In this case: ($25,000 - $5,000) = $20,000 > $10,000 ✓
+```
+
+**Startup/MVP Phase**:
+```
+Recommendation: Managed services for speed to market.
+
+Managed Service Benefits:
+- Faster time to market (weeks vs. months)
+- Focus on product, not infrastructure
+- Proven reliability and security
+- Easy to scale
+
+Cost Comparison:
+- Managed: $500/month
+- Self-Managed: $200/month + 40 hours setup + 10 hours/month maintenance
+
+Trade-off: $300/month vs. 2-4 weeks faster launch.
+Recommendation: Use managed services during MVP phase, optimize later.
+
+Opportunity Cost:
+- 2 weeks faster launch = 2 weeks more customer feedback
+- Early customer feedback value >> $300/month savings
+```
+
+#### Decision Matrix: Managed vs. Self-Managed
+
+| Factor | Managed Services | Self-Managed |
+|--------|------------------|--------------|
+| **Cost (Small Scale)** | $100/month | $50/month + $2,000/month ops |
+| **Cost (Large Scale)** | $25,000/month | $5,000/month + $10,000/month ops |
+| **Setup Time** | Minutes | Weeks |
+| **Operational Overhead** | Low (2-5 hours/month) | High (20-40 hours/month) |
+| **Expertise Required** | Basic | Advanced |
+| **Best For** | Small teams, startups, standard use cases | Large teams, custom requirements, high scale |
+| **Break-Even Point** | < 10 instances | > 50 instances |
+
+### Trade-Off 5: Storage Classes (Cost vs. Access Speed)
+
+#### Context-Dependent Storage Decisions
+
+**Frequently Accessed Data (Daily Access)**:
+```
+Recommendation: S3 Standard for optimal performance.
+
+S3 Standard:
+- Cost: $0.023/GB-month
+- Access: Instant, no retrieval fees
+- Best for: Active data, frequently accessed files
+
+Trade-off: None - this is the right choice for frequent access.
+
+Example:
+- 1 TB data accessed 100 times/month
+- S3 Standard: $23/month storage + $0 retrieval = $23/month
+- S3 Standard-IA: $12.50/month storage + $100 retrieval = $112.50/month
+- Recommendation: Use S3 Standard (5x cheaper for frequent access)
+```
+
+**Infrequently Accessed Data (Monthly Access)**:
+```
+Recommendation: S3 Standard-IA for 50% cost savings.
+
+S3 Standard-IA:
+- Cost: $0.0125/GB-month storage + $0.01/GB retrieval
+- Access: Instant, with retrieval fees
+- Best for: Backups, disaster recovery, infrequent access
+
+Example:
+- 1 TB data accessed 5 times/month
+- S3 Standard: $23/month
+- S3 Standard-IA: $12.50/month storage + $50 retrieval = $62.50/month
+- Savings: -$39.50/month (more expensive!)
+
+Break-Even: Access < 1 time/month for Standard-IA to be cheaper.
+Recommendation: Use Standard-IA only if accessed < 1 time/month.
+```
+
+**Rarely Accessed Data (Quarterly/Annual Access)**:
+```
+Recommendation: S3 Glacier Instant Retrieval for 68% savings.
+
+S3 Glacier Instant Retrieval:
+- Cost: $0.004/GB-month storage + $0.03/GB retrieval
+- Access: Instant (milliseconds)
+- Best for: Archive data with occasional instant access needs
+
+Example:
+- 1 TB data accessed 1 time/quarter
+- S3 Standard: $23/month × 12 = $276/year
+- Glacier IR: $4/month × 12 + $30 retrieval × 4 = $168/year
+- Savings: $108/year (39%)
+
+Recommendation: Use Glacier IR for data accessed < 1 time/month.
+```
+
+**Archive Data (Annual or Never)**:
+```
+Recommendation: S3 Glacier Flexible Retrieval or Deep Archive.
+
+Options:
+1. Glacier Flexible Retrieval
+   - Cost: $0.0036/GB-month + $0.02/GB retrieval
+   - Access: 1-5 minutes (expedited), 3-5 hours (standard)
+   - Best for: Archives with occasional access
+
+2. Glacier Deep Archive
+   - Cost: $0.00099/GB-month + $0.02/GB retrieval
+   - Access: 12 hours
+   - Best for: Long-term archives, compliance
+
+Example (10 TB archive, accessed once/year):
+- S3 Standard: $230/month × 12 = $2,760/year
+- Glacier Flexible: $36/month × 12 + $200 retrieval = $632/year
+- Glacier Deep Archive: $10/month × 12 + $200 retrieval = $320/year
+- Savings: $2,440/year (88% with Deep Archive)
+
+Trade-off: 12-hour retrieval time vs. 88% cost savings.
+Recommendation: Use Deep Archive for compliance archives, long-term retention.
+```
+
+#### Decision Matrix: Storage Classes
+
+| Access Pattern | Storage Class | Cost/GB-month | Retrieval Time | Retrieval Cost | Best For |
+|----------------|---------------|---------------|----------------|----------------|----------|
+| **Daily** | S3 Standard | $0.023 | Instant | $0 | Active data |
+| **Weekly** | S3 Standard | $0.023 | Instant | $0 | Frequently accessed |
+| **Monthly** | S3 Standard-IA | $0.0125 | Instant | $0.01/GB | Backups |
+| **Quarterly** | Glacier IR | $0.004 | Instant | $0.03/GB | Archives |
+| **Annual** | Glacier Flexible | $0.0036 | 1-5 hours | $0.02/GB | Compliance |
+| **Rarely/Never** | Glacier Deep Archive | $0.00099 | 12 hours | $0.02/GB | Long-term archives |
+
+### Trade-Off 6: Budget Constraints and Environment-Specific Guidance
+
+#### Tight Budget (Startup, Cost-Sensitive)
+
+**Acceptable Cost-Saving Measures**:
+```
+Development:
+- Single-AZ everything (50% savings)
+- t3.micro/t3.small instances (80% savings vs. production-sized)
+- Scheduled start/stop (70% savings - only run during work hours)
+- Spot instances for CI/CD (90% savings)
+- No load balancers (use single instance with Elastic IP)
+- Minimal monitoring (CloudWatch free tier only)
+
+Staging:
+- Single-AZ (50% savings)
+- Smaller instance sizes (50% savings vs. production)
+- Shared resources (one RDS for multiple apps)
+- Scheduled start/stop during off-hours (30% savings)
+
+Production:
+- Multi-AZ for databases only (not compute)
+- t4g burstable instances (40% savings vs. fixed performance)
+- Spot instances for batch jobs (90% savings)
+- CloudFront free tier (1 TB/month)
+- Basic monitoring (GuardDuty, CloudTrail only)
+
+Total Savings: 60-70% vs. "gold standard" architecture
+Risk: Acceptable for non-critical applications, startups validating product-market fit
+```
+
+#### Moderate Budget (Growth Stage)
+
+**Balanced Approach**:
+```
+Development:
+- Single-AZ (50% savings)
+- Right-sized instances (t4g.small/medium)
+- Scheduled start/stop (70% savings)
+- Spot instances for CI/CD (90% savings)
+
+Staging:
+- Single-AZ or Multi-AZ (depending on testing needs)
+- Production-like sizing for performance testing
+- Always-on for continuous testing
+
+Production:
+- Multi-AZ for critical components (databases, load balancers)
+- Mix of Reserved Instances (baseline) + On-Demand (peaks)
+- Graviton instances for 20-40% savings
+- CloudFront for global distribution
+- Standard monitoring (GuardDuty, Security Hub, Config)
+
+Total Savings: 30-40% vs. "gold standard" architecture
+Risk: Low - maintains reliability while optimizing costs
+```
+
+#### Flexible Budget (Enterprise, High-Availability Requirements)
+
+**Reliability-First Approach**:
+```
+Development:
+- Single-AZ acceptable (50% savings)
+- Right-sized instances
+- Always-on for developer productivity
+
+Staging:
+- Multi-AZ for production-like testing
+- Production-equivalent sizing
+- Always-on
+
+Production:
+- Multi-AZ everything (databases, compute, load balancers)
+- Multi-region for disaster recovery
+- Reserved Instances for 30-60% savings on baseline
+- Graviton instances for 20-40% additional savings
+- Comprehensive monitoring and security
+- Dedicated support plan
+
+Total Savings: 20-30% through Reserved Instances and Graviton
+Risk: Minimal - prioritizes reliability and performance
+```
+
+### Decision Framework: Cost Optimization Investment
+
+Use this framework to determine appropriate cost optimization level:
+
+| Factor | Minimal Investment | Standard Investment | Maximum Investment |
+|--------|-------------------|---------------------|-------------------|
+| **Environment** | Development | Staging | Production |
+| **Budget** | Tight | Moderate | Flexible |
+| **Availability SLA** | None | 99% | 99.9%+ |
+| **Team Size** | 1-5 people | 6-20 people | 20+ people |
+| **Business Stage** | Startup/MVP | Growth | Enterprise |
+| **Multi-AZ** | No (50% savings) | Databases only | Everything |
+| **Instance Type** | t3.micro/small | t4g.medium | Right-sized for performance |
+| **Pricing Model** | On-Demand + Spot | Mixed (Reserved + On-Demand) | Reserved/Savings Plans |
+| **Monitoring** | Basic (free tier) | Standard (GuardDuty, Config) | Comprehensive |
+| **Monthly Cost** | $100-500 | $1,000-5,000 | $10,000+ |
+| **Cost Savings** | 60-70% | 30-40% | 20-30% |
+
+### Key Takeaways for Context-Aware Cost Optimization
+
+1. **Environment Matters**: Different cost optimization strategies for dev, staging, and production
+2. **Budget Drives Decisions**: Tight budgets require aggressive optimization; flexible budgets prioritize reliability
+3. **SLA Requirements Override Cost**: Customer-facing applications with SLAs require Multi-AZ (non-negotiable)
+4. **Quantify Trade-Offs**: Use specific cost numbers and percentages to make informed decisions
+5. **Optimize Progressively**: Start with aggressive cost optimization, invest in reliability as you grow
+6. **Balance Cost and Performance**: For customer-facing apps, poor performance costs more than infrastructure
+7. **Managed Services for Small Teams**: 10-40x ROI compared to self-managed infrastructure
+8. **Reserved Instances at Scale**: 30-60% savings for predictable workloads
+9. **Spot for Fault-Tolerant**: 90% savings for batch jobs, CI/CD, dev/test
+10. **Document Decisions**: Record why you chose specific cost optimization approaches
+
+### Anti-Patterns to Avoid
+
+❌ **Over-Optimizing Development**: Spending hours to save $10/month on dev environments
+❌ **Under-Investing in Production**: Using Single-AZ for customer-facing applications to save money
+❌ **Ignoring SLA Requirements**: Choosing cost over reliability when SLA requires high availability
+❌ **Premature Reserved Instances**: Committing to 3-year RIs before usage patterns stabilize
+❌ **Self-Managing Everything**: Building custom solutions when managed services are more cost-effective
+❌ **No Cost Monitoring**: Optimizing once and never reviewing again
+❌ **One-Size-Fits-All**: Same cost optimization strategy for all environments
+
+✅ **Environment-Specific Optimization**: Aggressive savings in dev, balanced in staging, reliability-first in production
+✅ **Context-Driven Decisions**: Let SLA, budget, and business stage drive cost optimization choices
+✅ **Progressive Investment**: Start lean, invest in reliability as you grow and validate
+✅ **Quantified Trade-Offs**: Use specific cost numbers to justify decisions
+✅ **Managed Services First**: Use managed services until scale justifies self-managed
+✅ **Continuous Optimization**: Monthly cost reviews and optimization
+✅ **Balanced Approach**: Optimize costs while meeting functional requirements
+
+
 ## Application Code Cost Optimization
 
 Application code efficiency directly impacts AWS costs through compute time, memory usage, and API calls. This power analyzes application code for resource cleanup, algorithm efficiency, and batch operations.
@@ -2567,3 +3201,125 @@ This guide covers:
 - Lambda optimization for cost reduction
 - Connection pooling and reuse
 
+
+
+---
+
+## Mode-Aware Guidance for Cost Optimization Reviews
+
+This section guides Kiro on how to adapt Cost Optimization Pillar reviews based on the current review mode.
+
+### Simple Mode - Cost Optimization Reviews
+
+**Token Budget:** 17-25K | **Latency:** 2.5-6s | **Use:** CI/CD, quick checks, dev reviews
+
+**What to Include:**
+- Direct cost violation identification (oversized instances, unused resources, no auto-scaling)
+- Prescriptive recommendations without trade-off discussion
+- Standard risk levels: High (wasted resources >$100/month), Medium ($20-100/month), Low (<$20/month)
+- Code examples showing fixes
+
+**What to EXCLUDE:**
+- Context questions about budget, growth plans, or business priorities
+- Trade-off discussions (cost vs. performance, cost vs. reliability)
+- Alternative approaches or decision matrices
+
+**Example Output:**
+```
+❌ HIGH RISK: EC2 instance oversized (t3.xlarge with 10% CPU usage)
+Location: compute.tf:23
+Recommendation: Right-size to t3.medium
+Savings: $50/month (60% cost reduction)
+```
+
+### Context-Aware Mode - Cost Optimization Reviews
+
+**Token Budget:** 35-50K | **Latency:** 4-8s | **Use:** Interactive sessions, production reviews
+
+**What to Include:**
+- Context questions (3-5): Budget constraint, growth expectations, performance requirements, business priorities
+- Conditional recommendations based on context
+- Trade-off explanations (cost vs. performance, cost vs. reliability)
+- Cost-benefit analysis for key recommendations
+- Alternative approaches with pros/cons
+
+**Example Output:**
+```
+⚠️ CONTEXT-DEPENDENT: No auto-scaling configured
+
+Context Questions:
+- What's your traffic pattern? (steady/variable/spiky)
+- What's your budget priority? (minimize cost/balance/maximize performance)
+
+Conditional Guidance:
+- FOR variable traffic (2x peak): Auto-scaling REQUIRED
+  - Cost savings: 40-60% during off-peak hours
+  - Performance: Handles spikes automatically
+  
+- FOR steady traffic: Fixed capacity acceptable
+  - Simpler operations
+  - Predictable costs
+
+Recommendation: Based on traffic pattern, choose appropriate scaling strategy.
+```
+
+### Full Analysis Mode - Cost Optimization Reviews
+
+**Token Budget:** 70-95K | **Latency:** 5-10s | **Use:** Major decisions, budget planning
+
+**What to Include:**
+- Comprehensive context gathering (10+ questions including current costs, growth plans, business model)
+- Decision matrices comparing 3-5 cost optimization options
+- Quantitative cost-benefit analysis with ROI calculations
+- Multi-pillar impact analysis (cost vs. performance vs. reliability)
+- Scenario matching (startup/growth/enterprise)
+- Long-term cost projections and TCO analysis
+- Phased implementation roadmap
+
+**Example Output:**
+```
+🔍 COMPREHENSIVE ANALYSIS: Compute Cost Optimization Strategy
+
+Decision Matrix: Compute Options
+| Option | Cost | Performance | Reliability | Complexity |
+|--------|------|-------------|-------------|------------|
+| Fixed EC2 | $500/mo | ⭐⭐⭐ | ⭐⭐⭐ | ⭐⭐⭐⭐⭐ |
+| Auto-scaling | $300/mo | ⭐⭐⭐⭐ | ⭐⭐⭐⭐ | ⭐⭐⭐⭐ |
+| Spot + On-Demand | $150/mo | ⭐⭐⭐⭐ | ⭐⭐⭐ | ⭐⭐⭐ |
+| Lambda | $100/mo | ⭐⭐⭐ | ⭐⭐⭐⭐⭐ | ⭐⭐ |
+
+Recommended: Auto-scaling with Spot instances
+
+Cost-Benefit Analysis:
+- Current: $500/month fixed capacity
+- Proposed: $150/month with Spot + auto-scaling
+- Savings: $350/month ($4,200/year)
+- Implementation: 16 hours
+- ROI: Payback in <1 month
+
+[Detailed pillar impact analysis, trade-off scenarios, implementation roadmap]
+```
+
+### Mode Selection
+
+**Simple Mode:** CI/CD, dev files, "quick review"
+**Context-Aware Mode:** Production files, interactive sessions, "review with context"
+**Full Analysis Mode:** Explicit request for "full analysis", budget planning
+
+### Best Practices by Mode
+
+**Simple Mode:** Focus on clear waste, prescriptive fixes, no context questions
+**Context-Aware Mode:** Ask 3-5 context questions, explain trade-offs, provide alternatives
+**Full Analysis Mode:** Comprehensive analysis, decision matrices, TCO calculations, roadmap
+
+### Common Scenarios by Mode
+
+**Oversized Instance:**
+- Simple: "Right-size to t3.medium, save $50/month"
+- Context-Aware: "For 10% CPU usage, t3.medium sufficient. For variable load, use auto-scaling"
+- Full Analysis: "[Decision matrix comparing instance types with cost, performance, auto-scaling strategies]"
+
+**No Reserved Instances:**
+- Simple: "Purchase Reserved Instances for 72% savings"
+- Context-Aware: "For steady workload, RIs save 72%. For variable workload, Savings Plans more flexible"
+- Full Analysis: "[Decision matrix comparing On-Demand, RIs, Savings Plans, Spot with commitment levels]"

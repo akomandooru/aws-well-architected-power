@@ -1,38 +1,44 @@
 # AWS Well-Architected Framework Review Power
 
-> Continuous, lightweight Well-Architected Framework reviews integrated directly into your development workflow
+> Context-aware architecture reviews with trade-off analysis. Choose your depth - quick checks (3s), balanced reviews (6s), or comprehensive analysis (9s).
 
-[![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)](https://github.com/your-org/aws-well-architected-power)
+[![Version](https://img.shields.io/badge/version-2.0.0-blue.svg)](https://github.com/your-org/aws-well-architected-power)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Kiro Power](https://img.shields.io/badge/Kiro-Power-purple.svg)](https://kiro.ai)
 
 ## Overview
 
-The AWS Well-Architected Framework Review Power transforms how you build AWS infrastructure by bringing architecture reviews directly into your development workflow. Instead of waiting for formal review ceremonies, catch issues early, learn best practices continuously, and generate production-ready infrastructure code automatically.
+The AWS Well-Architected Framework Review Power transforms how you build AWS infrastructure and applications by bringing context-aware architecture reviews directly into your development workflow. Get the right level of detail for your situation - from fast CI/CD checks to comprehensive trade-off analysis for major decisions.
 
 ### Why This Power?
 
 **Traditional Approach:**
 - Wait weeks for formal architecture reviews
+- Get one-size-fits-all recommendations (too slow or too shallow)
 - Discover critical issues late in development
-- Scramble to fix security and reliability problems before launch
-- Repeat the same mistakes across projects
+- Don't understand trade-offs between options
+- Infrastructure and application code reviewed separately
+- No context about your specific requirements
 
 **With This Power:**
-- Review architecture as you build
-- Catch issues immediately with line-level feedback
-- Learn AWS best practices through detailed explanations
-- Generate infrastructure code with best practices built-in
-- Track improvements over time with comprehensive reports
+- **Context-aware guidance**: Recommendations adapt to your environment, SLA, budget, and data classification
+- **Choose your review depth**: Fast checks (3s) for CI/CD, balanced reviews (6s) for production, comprehensive analysis (9s) for major decisions
+- **Understand trade-offs**: "Multi-AZ costs 2x but prevents $7K/month in downtime" - specific numbers, not vague advice
+- **Compare options**: Decision matrices showing cost, reliability, performance, and complexity trade-offs
+- **Multi-layer analysis**: Review infrastructure (IaC) and application code together
+- **Automatic mode detection**: CI/CD gets fast checks, production gets context-aware analysis
 
 ### What You Can Do
 
-- 🔍 **Proactive Reviews**: Conduct architecture assessments during active development
+- 🎯 **Context-Aware Trade-Offs**: Understand what you gain and give up with quantitative data (cost, downtime, performance)
+- ⚡ **Three Review Modes**: Simple (3s), Context-Aware (6s), Full Analysis (9s) - automatically selected or explicitly requested
 - 📋 **IaC Analysis**: Scan Terraform, CloudFormation, and CDK files with line-level feedback
+- 💻 **Application Code Analysis**: Analyze Python, Java, TypeScript, Go, C#, and Ruby code for Well-Architected patterns
+- 🔄 **Multi-Layer Analysis**: Review infrastructure and application code together for comprehensive compliance
+- 📊 **Decision Matrices**: Compare multiple architecture options with cost-benefit analysis
 - 📚 **Learn Best Practices**: Access detailed explanations, examples, and anti-patterns
-- 📊 **Generate Reports**: Create structured reports in Markdown, JSON, or HTML
-- ⚡ **Smart Code Generation**: Generate infrastructure with security, reliability, and efficiency built-in
-- 🔄 **Continuous Improvement**: Track architecture quality over time
+- 📈 **Generate Reports**: Create structured reports in Markdown, JSON, or HTML
+- ⚡ **Smart Code Generation**: Generate infrastructure and application code with security, reliability, and efficiency built-in
 - 🤖 **Optional Automation**: Enable automated reviews with pre-configured hooks
 
 ### Quick Start
@@ -52,6 +58,120 @@ See [Quick Start Guide](QUICKSTART.md) for detailed setup instructions.
 ## Features
 
 ## Features
+
+### ⚡ Review Mode Selection
+
+Choose the right review mode for your needs - optimize for speed, depth, or balance:
+
+| Mode | Speed | Token Usage | Best For | Key Features |
+|------|-------|-------------|----------|--------------|
+| **Simple Mode** | 2.5-6s | 17-25K | CI/CD, quick checks, dev workflow | Prescriptive recommendations, no context questions |
+| **Context-Aware Mode** | 4-8s | 35-50K | Production reviews, interactive sessions | Context gathering, trade-off analysis, conditional guidance |
+| **Full Analysis Mode** | 5-10s | 70-95K | Major architecture decisions | Decision matrices, cost-benefit analysis, comprehensive scenarios |
+
+**Automatic Mode Detection:**
+The power automatically selects the appropriate mode based on:
+- **Environment detection**: CI/CD → Simple, Production files → Context-Aware
+- **File path patterns**: `/dev/` → Simple, `/prod/` or `/staging/` → Context-Aware
+- **User requests**: "quick review" → Simple, "full analysis" → Full Analysis
+- **Session type**: Interactive → Context-Aware, Automated → Simple
+
+**Performance Comparison:**
+
+```
+Simple Mode (CI/CD Pipeline):
+├─ Latency: 2.5-6 seconds
+├─ Token Usage: 17-25K tokens
+├─ Cost per Review: ~$0.90
+└─ Output: Direct issue identification with prescriptive fixes
+
+Context-Aware Mode (Production Review):
+├─ Latency: 4-8 seconds
+├─ Token Usage: 35-50K tokens
+├─ Cost per Review: ~$1.86
+└─ Output: Context questions + conditional recommendations + trade-offs
+
+Full Analysis Mode (Architecture Decision):
+├─ Latency: 5-10 seconds
+├─ Token Usage: 70-95K tokens
+├─ Cost per Review: ~$3.66
+└─ Output: Decision matrices + cost-benefit + multi-pillar impact
+```
+
+**Use Cases by Mode:**
+
+**Simple Mode** - Fast feedback for routine checks:
+- ✅ Pre-commit hooks and CI/CD pipelines
+- ✅ Development environment reviews
+- ✅ Quick validation during active coding
+- ✅ Routine compliance checks
+- ❌ Not for: Production architecture decisions
+
+**Context-Aware Mode** - Balanced analysis with context:
+- ✅ Production and staging environment reviews
+- ✅ Interactive review sessions
+- ✅ When trade-offs need explanation
+- ✅ Environment-specific guidance needed
+- ❌ Not for: Time-critical CI/CD checks
+
+**Full Analysis Mode** - Comprehensive decision support:
+- ✅ Major architecture decisions (database HA, caching strategy)
+- ✅ Multi-option comparisons with cost justification
+- ✅ Architecture review meetings
+- ✅ When quantitative analysis is needed
+- ❌ Not for: Routine checks or CI/CD
+
+**Example: Automatic Mode Detection**
+
+```bash
+# Development file - automatically uses Simple Mode
+"Review infrastructure/dev/lambda.tf"
+→ Simple Mode (3.2s, prescriptive recommendations)
+
+# Production file - automatically uses Context-Aware Mode
+"Review infrastructure/prod/database.tf"
+→ Context-Aware Mode (6.1s, context questions + trade-offs)
+
+# Explicit request - overrides automatic detection
+"Quick review of infrastructure/prod/database.tf"
+→ Simple Mode (3.4s, fast check even for prod file)
+
+# Comprehensive analysis request
+"Full analysis of caching options"
+→ Full Analysis Mode (8.7s, decision matrices + cost-benefit)
+```
+
+**Configuration Options:**
+
+Customize mode behavior in `.kiro/config/well-architected-modes.json`:
+
+```json
+{
+  "defaultMode": "context-aware",
+  "autoDetectMode": true,
+  "modeOverrides": {
+    "development": "simple",
+    "production": "context-aware"
+  },
+  "customDetectionRules": [
+    {
+      "condition": "filePath.includes('critical')",
+      "mode": "context-aware",
+      "priority": 95
+    }
+  ]
+}
+```
+
+**Cost Optimization:**
+- Use Simple Mode for 90% of reviews (routine checks)
+- Use Context-Aware Mode for 9% of reviews (production)
+- Use Full Analysis Mode for 1% of reviews (major decisions)
+- **Result:** 10x cost reduction vs. always using Full Analysis
+
+See [steering/review-mode-selection.md](steering/review-mode-selection.md) for complete mode selection guide and [examples/mode-selection-examples.md](examples/mode-selection-examples.md) for detailed examples.
+
+---
 
 ### 🎯 Multi-Pillar Coverage
 
@@ -122,6 +242,74 @@ Transform reviews into learning opportunities:
 - **Documentation Links**: Direct access to official AWS resources
 - **Interactive Quizzes**: Test your understanding
 
+### 🎯 Context-Aware Trade-Off Guidance
+
+Make informed architecture decisions based on your specific context:
+
+**Context Gathering:**
+- **Environment Type**: Development, staging, production, demo, test
+- **Availability Requirements**: SLA targets, RTO/RPO, acceptable downtime
+- **Budget Constraints**: Monthly budget, cost sensitivity, business priorities
+- **Data Classification**: Public, internal, confidential, restricted (PII/PHI/financial)
+- **Compliance Requirements**: GDPR, HIPAA, PCI-DSS, SOC 2, industry-specific
+
+**Trade-Off Analysis:**
+- **What You Gain**: Specific benefits with quantitative estimates
+- **What You Give Up**: Specific costs and limitations
+- **When to Choose**: Clear guidance based on your context
+- **Cost Impact**: Actual dollar amounts and percentages
+- **Business Rationale**: Why the trade-off makes sense for your situation
+
+**Decision Matrices:**
+- Multi-AZ vs. Single-AZ deployment (cost vs. availability)
+- Encryption approaches (SSE-S3, SSE-KMS, client-side)
+- Instance sizing (cost vs. performance)
+- Caching strategies (ElastiCache, DAX, CloudFront, application-level)
+- Disaster recovery options (backup, pilot light, warm standby, hot standby)
+- Database choices (RDS, Aurora, DynamoDB)
+
+**Common Scenarios:**
+- **Startup MVP**: $110-150/month, rapid iteration, acceptable downtime
+- **Enterprise Production**: $15k-30k/month, 99.99% SLA, compliance required
+- **Prototype/POC**: $20-50/month, short-lived, minimal cost
+- **Cost-Sensitive Production**: $2.5k-4k/month, balance cost and reliability
+- **Performance-Critical**: $8k-18k/month, <100ms latency required
+- **Regulated Industry**: $8k-30k/month, HIPAA/PCI-DSS compliance
+- **Global Scale**: $25k-80k/month, multi-region, high availability
+- **Internal Tools**: $500-2k/month, moderate availability, limited users
+
+**Example Trade-Off Guidance:**
+
+```
+You: "Should I use Multi-AZ for my RDS database?"
+
+Kiro: "To provide context-aware guidance, I need to understand your situation:
+       - What environment is this for? (development/staging/production)
+       - What's your availability requirement? (SLA target or acceptable downtime)
+       - Do you have budget constraints?"
+
+You: "Production with 99.9% SLA requirement"
+
+Kiro: "For production with 99.9% SLA (8.76 hours downtime/year allowed):
+      
+      REQUIRED: Multi-AZ deployment
+      
+      TRADE-OFF ANALYSIS:
+      - Cost Impact: +$60/month (2x cost: $60 → $120)
+      - Availability: 99% → 99.95% (43x less downtime)
+      - Recovery Time: 1-2 hours manual → 60-120 seconds automatic
+      - Business Impact: Meet SLA commitment, avoid penalties
+      
+      RATIONALE: The $60/month cost is negligible compared to:
+      - SLA penalty costs (typically 10-25% of monthly fees)
+      - Revenue loss during outages ($1000s per hour for many businesses)
+      - Customer trust and reputation damage
+      
+      RECOMMENDATION: Multi-AZ is NON-NEGOTIABLE for your context."
+```
+
+See [examples/decision-matrices.md](examples/decision-matrices.md) and [examples/trade-off-scenarios.md](examples/trade-off-scenarios.md) for comprehensive guidance.
+
 ### 🤖 Proactive Guidance
 
 Kiro automatically recognizes review opportunities:
@@ -149,6 +337,8 @@ See [hooks/README.md](hooks/README.md) for installation and customization.
 ### Prerequisites
 
 - ✅ Kiro IDE installed and configured
+- ✅ AWS infrastructure code (Terraform, CloudFormation, or CDK) - optional but recommended
+- ✅ AWS application code (Python, Java, TypeScript, Go, C#, or Ruby) - optional but recommended
 - ✅ Python and uv (for AWS MCP servers - optional, see [uv installation](https://docs.astral.sh/uv/getting-started/installation/))
 - ✅ AWS credentials configured (optional, for MCP server features)
 - ✅ Git (for cloning the repository)
@@ -286,7 +476,85 @@ You're ready to start conducting Well-Architected reviews. See the [Quick Start 
 
 ### 🚀 Quick Examples
 
-#### Example 1: Review Your Architecture
+#### Example 1: Quick Review (Simple Mode)
+
+```
+You: "Quick review of this Lambda configuration"
+
+Kiro: [Uses Simple Mode - 3.2 seconds]
+      ❌ HIGH RISK: Hardcoded API key in environment variables
+      ⚠️ MEDIUM RISK: Missing timeout configuration
+      Summary: 1 high-risk, 2 medium-risk issues
+```
+
+**What happens:**
+- Fast prescriptive recommendations (2.5-6 seconds)
+- No context questions
+- Direct issue identification with clear fixes
+- Perfect for CI/CD and development workflow
+
+#### Example 2: Production Review (Context-Aware Mode)
+
+```
+You: "Review this production database configuration"
+
+Kiro: [Uses Context-Aware Mode - 6.1 seconds]
+      I notice this is a production database. Let me gather context...
+      
+      📋 Context Questions:
+      - What's your availability requirement? (99.9% SLA)
+      - What's your budget constraint? (Moderate)
+      - What type of data? (Customer PII)
+      
+      ❌ HIGH RISK: Single-AZ RDS in production
+      FOR your requirements (99.9% SLA, customer PII):
+        Multi-AZ is REQUIRED
+        
+      Trade-Off Analysis:
+      - Cost Impact: +$73/month (2x cost)
+      - Reliability: 99% → 99.95% (43x less downtime)
+      - Worth it for your SLA requirement
+```
+
+**What happens:**
+- Context gathering (3-5 questions)
+- Conditional recommendations based on your situation
+- Trade-off explanations with cost impact
+- Environment-specific guidance
+
+#### Example 3: Architecture Decision (Full Analysis Mode)
+
+```
+You: "Full analysis of caching options for our API"
+
+Kiro: [Uses Full Analysis Mode - 8.7 seconds]
+      Loading decision matrices and scenarios...
+      
+      📊 DECISION MATRIX: Caching Architecture Options
+      
+      | Option | Reliability | Performance | Cost/Month | Best For |
+      |--------|------------|-------------|------------|----------|
+      | Single Node | ⭐⭐ | ⭐⭐⭐ | $15 | Dev/Test |
+      | Redis Cluster | ⭐⭐⭐⭐ | ⭐⭐⭐⭐ | $180 | Production |
+      | Cluster + Replicas | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ | $360 | High-traffic |
+      
+      💰 COST-BENEFIT ANALYSIS:
+      - Additional cost: +$345/month
+      - Risk reduction: -$7,267/month
+      - Net benefit: $6,922/month
+      - ROI: 2,005%
+      
+      ✅ RECOMMENDED: Cluster + Replicas
+```
+
+**What happens:**
+- Comprehensive context gathering (8-10 questions)
+- Decision matrices comparing multiple options
+- Quantitative cost-benefit analysis
+- Multi-pillar impact analysis
+- Implementation roadmap
+
+#### Example 4: Review Your Architecture
 
 ```
 You: "I want to review my architecture against the Security and Reliability pillars"
@@ -544,6 +812,7 @@ The power automatically recognizes these file patterns for proactive reviews:
 
 Detailed steering files for each Well-Architected pillar:
 
+**Infrastructure Guidance:**
 - **[steering/security.md](steering/security.md)** - Security best practices, encryption, IAM, compliance
 - **[steering/reliability.md](steering/reliability.md)** - Fault tolerance, backups, multi-AZ, disaster recovery
 - **[steering/performance.md](steering/performance.md)** - Instance sizing, caching, database optimization
@@ -551,19 +820,33 @@ Detailed steering files for each Well-Architected pillar:
 - **[steering/operational-excellence.md](steering/operational-excellence.md)** - Monitoring, logging, automation
 - **[steering/sustainability.md](steering/sustainability.md)** - Energy efficiency, resource optimization
 
+**Application Code Guidance:**
+- **[steering/security-application-code.md](steering/security-application-code.md)** - Application security patterns (secrets management, authentication)
+- **[steering/reliability-application-code.md](steering/reliability-application-code.md)** - Application reliability patterns (error handling, retries, timeouts)
+- **[steering/performance-application-code.md](steering/performance-application-code.md)** - Application performance patterns (caching, connection pooling, async)
+- **[steering/cost-optimization-application-code.md](steering/cost-optimization-application-code.md)** - Application cost patterns (resource cleanup, efficiency)
+- **[steering/operational-excellence-application-code.md](steering/operational-excellence-application-code.md)** - Application operational patterns (logging, monitoring, tracing)
+
 ### Workflow Guidance
 
 - **[steering/proactive-review-guidance.md](steering/proactive-review-guidance.md)** - When and how Kiro suggests reviews
 - **[steering/code-generation-guidance.md](steering/code-generation-guidance.md)** - Applying Well-Architected principles in generated code
+- **[steering/review-mode-selection.md](steering/review-mode-selection.md)** - Complete guide to Simple, Context-Aware, and Full Analysis modes
+- **[steering/context-questions.md](steering/context-questions.md)** - Context gathering templates for environment, availability, budget, and data classification
+- **[steering/trade-off-guidance.md](steering/trade-off-guidance.md)** - Trade-off analysis framework and decision-making guidance
 
 ### Examples
 
 - **[examples/README.md](examples/README.md)** - Complete examples overview
+- **[examples/mode-selection-examples.md](examples/mode-selection-examples.md)** - Detailed examples of Simple, Context-Aware, and Full Analysis modes
 - **[examples/learning/](examples/learning/)** - Educational examples with quizzes
 - **[examples/terraform/](examples/terraform/)** - Terraform security examples
 - **[examples/cloudformation/](examples/cloudformation/)** - CloudFormation reliability examples
 - **[examples/cdk/](examples/cdk/)** - CDK cost optimization examples
+- **[examples/application-code/](examples/application-code/)** - Python, Java, and TypeScript application code examples
 - **[examples/reviews/](examples/reviews/)** - Review workflow examples and reports
+- **[examples/decision-matrices.md](examples/decision-matrices.md)** - Comprehensive decision matrices for common architecture choices
+- **[examples/trade-off-scenarios.md](examples/trade-off-scenarios.md)** - Real-world scenarios with recommended architectures and trade-off analysis
 
 ### Hooks
 
@@ -1122,6 +1405,20 @@ Each example includes:
 - `cost-optimization-issues.ts` - 5 cost inefficiencies
 - `cost-optimization-issues-fixed.ts` - Remediated version with optimizations
 
+#### Application Code Analysis Examples (`examples/application-code/`)
+
+**Python Lambda Examples**:
+- `python-lambda-issues.py` - Missing error handling, hardcoded secrets, no retry logic
+- `python-lambda-fixed.py` - Proper error handling, secrets manager, retry with exponential backoff
+
+**Java Service Examples**:
+- `java-service-issues.java` - Missing async patterns, resource leaks, no monitoring
+- `java-service-fixed.java` - Async clients, proper resource management, comprehensive monitoring
+
+**TypeScript API Examples**:
+- `typescript-api-issues.ts` - Missing error handling, hardcoded credentials, no health checks
+- `typescript-api-fixed.ts` - Proper error handling, environment variables, health check endpoints
+
 #### Review Workflow Examples (`examples/reviews/`)
 
 Complete guided review demonstration:
@@ -1149,6 +1446,23 @@ Complete guided review demonstration:
 - HIGH RISK: Unrestricted security group (line 23-35)
 - HIGH RISK: Unencrypted EBS volume (line 38-43)
 - HIGH RISK: Publicly accessible RDS (line 46-56)
+
+#### Test Application Code Analysis
+
+```bash
+# Review the Python Lambda issues example
+"Review the file ~/.kiro/powers/aws-well-architected-power/examples/application-code/python-lambda-issues.py"
+
+# Compare with the fixed version
+"Show me the differences between python-lambda-issues.py and python-lambda-fixed.py"
+```
+
+**Expected findings:**
+- HIGH RISK: Hardcoded AWS credentials (line 5-6)
+- HIGH RISK: Missing error handling around DynamoDB calls (line 15-20)
+- MEDIUM RISK: No retry logic for AWS service calls (line 15-20)
+- MEDIUM RISK: Missing logging instrumentation (throughout)
+- LOW RISK: No timeout configuration for Lambda context
 
 #### Explore Learning Mode
 
@@ -1562,15 +1876,17 @@ cp ~/.kiro/powers/installed/aws-well-architected-power/hooks/*.md ~/.kiro/hooks/
 ### Common Prompts
 
 ```bash
-# General review
+# General review (auto-detects mode based on context)
 "Review my infrastructure against AWS Well-Architected best practices"
+
+# Mode-specific reviews
+"Quick review of this Lambda function"  # → Simple Mode (2.5-6s)
+"Review this production database"  # → Context-Aware Mode (4-8s)
+"Full analysis of caching options"  # → Full Analysis Mode (5-10s)
 
 # Pillar-specific
 "Review for Security Pillar compliance"
 "Review for Cost Optimization opportunities"
-
-# Quick review
-"Quick review - top 3 critical issues only"
 
 # Learning mode
 "Enable learning mode and explain Reliability best practices"
@@ -1603,11 +1919,13 @@ mv ~/.kiro/hooks/aws-waf-file-save.md.disabled ~/.kiro/hooks/aws-waf-file-save.m
 ## Project Information
 
 **Version**: 1.0.0  
-**Last Updated**: 2026  
+**Last Updated**: 2024  
+**Maintained By**: Kiro Community  
 **License**: MIT  
+**Repository**: <repository-url>  
 **Documentation**: [POWER.md](POWER.md) | [QUICKSTART.md](QUICKSTART.md)  
+**Support**: Open an issue or contact Kiro support
 
 ---
 
 **Ready to build better AWS infrastructure?** Start with the [Quick Start Guide](QUICKSTART.md) and conduct your first Well-Architected review in under 5 minutes! 🚀
-

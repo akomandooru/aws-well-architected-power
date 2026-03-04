@@ -6,11 +6,12 @@ This steering file guides Kiro on recognizing opportunities to proactively sugge
 
 ### Core Principles
 
-1. **Context-Aware**: Recognize when users are working with infrastructure code or discussing architecture
+1. **Context-Aware**: Recognize when users are working with infrastructure code or discussing architecture, and infer context from file paths and names
 2. **Non-Intrusive**: Suggest reviews at natural breakpoints, not during active coding
 3. **Value-Focused**: Explain the specific value of a review in the current context
 4. **Actionable**: Provide clear next steps when suggesting a review
 5. **Respectful**: Accept when users decline and don't repeatedly suggest
+6. **Context-Gathering**: Ask about environment, SLA, budget, and data classification to provide tailored recommendations
 
 ## File Pattern Recognition
 
@@ -84,6 +85,214 @@ docs/architecture.md
 ADR-001-database-selection.md
 ARCHITECTURE.md
 ```
+
+## Context Inference from File Paths and Names
+
+### Inferring Environment from Paths
+
+File paths and names often reveal the environment type, which should inform recommendations:
+
+#### Development Environment Indicators
+- **Paths**: `dev/`, `development/`, `local/`, `sandbox/`
+- **File Names**: `dev.tf`, `development.yaml`, `local-config.json`
+- **Inference**: Development environment - cost optimization and simplicity prioritized over high availability
+- **Recommendation Adjustments**:
+  - Single-AZ deployments acceptable
+  - Smaller instance sizes appropriate
+  - Basic monitoring sufficient
+  - Encryption with AWS-managed keys acceptable
+
+#### Staging Environment Indicators
+- **Paths**: `staging/`, `stage/`, `uat/`, `qa/`, `test/`
+- **File Names**: `staging.tf`, `uat.yaml`, `qa-stack.json`
+- **Inference**: Staging/QA environment - balance between production-like and cost-effective
+- **Recommendation Adjustments**:
+  - Consider Multi-AZ for testing failover scenarios
+  - Production-like sizing but can be smaller
+  - Moderate monitoring
+  - Encryption similar to production for testing
+
+#### Production Environment Indicators
+- **Paths**: `prod/`, `production/`, `live/`, `main/`
+- **File Names**: `prod.tf`, `production.yaml`, `live-stack.json`
+- **Inference**: Production environment - reliability and security prioritized
+- **Recommendation Adjustments**:
+  - Multi-AZ required for databases and critical services
+  - Appropriate instance sizing for load
+  - Comprehensive monitoring and alerting
+  - Encryption with customer-managed keys (KMS CMK)
+  - Backup and disaster recovery required
+
+### Inferring Service Criticality
+
+#### High-Criticality Indicators
+- **File Names**: `critical-`, `core-`, `primary-`, `main-`
+- **Service Types**: Databases, authentication services, payment processing
+- **Inference**: Critical service requiring high availability
+- **Recommendation Adjustments**:
+  - Multi-AZ strongly recommended
+  - Comprehensive monitoring
+  - Disaster recovery planning
+  - Security hardening
+
+#### Low-Criticality Indicators
+- **File Names**: `batch-`, `background-`, `worker-`, `cron-`
+- **Service Types**: Batch processing, background jobs, scheduled tasks
+- **Inference**: Non-critical service, downtime acceptable
+- **Recommendation Adjustments**:
+  - Single-AZ acceptable
+  - Cost optimization prioritized
+  - Basic monitoring sufficient
+  - Spot instances acceptable
+
+### Examples of Context Inference
+
+**Example 1: File Path Analysis**
+```
+Path: infrastructure/prod/us-east-1/database/main.tf
+Inference:
+- Environment: Production (prod/)
+- Region: us-east-1
+- Service: Database (database/)
+- Criticality: High (production database)
+
+Recommendations:
+- Multi-AZ: REQUIRED
+- Encryption: KMS with CMK required
+- Backups: 30-day retention minimum
+- Monitoring: Comprehensive with alerting
+- Cost: Secondary to reliability
+```
+
+**Example 2: File Name Analysis**
+```
+File: dev-api-gateway.yaml
+Inference:
+- Environment: Development (dev- prefix)
+- Service: API Gateway
+- Criticality: Moderate
+
+Recommendations:
+- Multi-AZ: Optional (cost savings acceptable)
+- Encryption: AWS-managed keys acceptable
+- Monitoring: Basic CloudWatch metrics
+- Cost: Prioritize cost optimization
+```
+
+**Example 3: Combined Analysis**
+```
+Path: terraform/staging/critical-services/auth.tf
+Inference:
+- Environment: Staging (staging/)
+- Service: Authentication (auth.tf)
+- Criticality: High (critical-services/)
+
+Recommendations:
+- Multi-AZ: Recommended (test production-like setup)
+- Encryption: KMS with CMK (match production)
+- Monitoring: Production-like monitoring
+- Cost: Balance between production-like and cost-effective
+```
+
+## Context-Aware Proactive Suggestions
+
+### Gathering Context Before Recommendations
+
+When suggesting a review, gather context to provide tailored recommendations:
+
+**Context Questions to Ask:**
+1. "What environment is this for? (development, staging, production)"
+2. "What's your SLA target?" (if production)
+3. "What's your monthly infrastructure budget?"
+4. "Does this handle sensitive data (PII, financial, health)?"
+5. "What are your latency requirements?"
+
+**Example Context-Aware Suggestion:**
+```
+User: [Creates prod/database/main.tf with RDS configuration]
+
+Kiro Recognition:
+- File path indicates production environment
+- Database service (critical)
+- Need to gather additional context
+
+Kiro Suggestion:
+"I see you're configuring a production database. Before I review it, let me gather some context:
+- What's your SLA target? (99%, 99.9%, 99.99%)
+- Do you handle sensitive data (PII, financial, health)?
+- What's your expected query load?
+
+This will help me provide recommendations tailored to your specific requirements."
+```
+
+### Adjusting Recommendations Based on Context
+
+**Scenario 1: Development Environment**
+```
+Context: dev/api/main.tf, no SLA, tight budget
+
+Recommendations:
+- Single-AZ: "For development, Single-AZ is acceptable and saves 50% cost"
+- t4g.micro instances: "Start small for dev, scale up in production"
+- Basic monitoring: "CloudWatch free tier is sufficient for development"
+- AWS-managed encryption: "Adequate for non-production data"
+```
+
+**Scenario 2: Production with 99.9% SLA**
+```
+Context: prod/api/main.tf, 99.9% SLA, moderate budget, handles PII
+
+Recommendations:
+- Multi-AZ: "REQUIRED for 99.9% SLA - provides automatic failover"
+- m6g.large instances: "Appropriate sizing for production load"
+- Comprehensive monitoring: "CloudWatch + X-Ray for production observability"
+- KMS with CMK: "REQUIRED for PII - provides audit trail and compliance"
+```
+
+**Scenario 3: Cost-Sensitive Production**
+```
+Context: prod/api/main.tf, 99.5% SLA, tight budget, no sensitive data
+
+Recommendations:
+- Multi-AZ for database: "Critical for data durability"
+- Single-AZ for compute: "Acceptable trade-off for cost savings"
+- t4g instances with Reserved Instances: "35% savings with 1-year commitment"
+- Basic monitoring: "Focus on critical metrics to control costs"
+```
+
+### When to Ask for Context Clarification
+
+**Ask for Clarification When:**
+1. **Environment is Ambiguous**: File path doesn't clearly indicate dev/staging/prod
+2. **Critical Decisions**: Multi-AZ, encryption, disaster recovery recommendations
+3. **Cost vs. Reliability Trade-Offs**: Need to understand priorities
+4. **Compliance Requirements**: Sensitive data handling requires specific controls
+5. **Performance Requirements**: Latency targets affect architecture decisions
+
+**Example Clarification Request:**
+```
+User: [Creates infrastructure/api/main.tf]
+
+Kiro: "I see you're creating API infrastructure. To provide the best recommendations:
+- Is this for development, staging, or production?
+- Do you have specific SLA or latency requirements?
+
+This will help me tailor my suggestions to your needs."
+```
+
+### Context-Aware Suggestion Phrasing
+
+**Development Environment:**
+> "I see you're working on development infrastructure. Would you like me to review it for cost optimization and simplicity? I can suggest ways to minimize costs while maintaining good development practices."
+
+**Production Environment:**
+> "I notice this is production infrastructure. Would you like me to review it for reliability and security? I can check Multi-AZ configurations, encryption, monitoring, and disaster recovery."
+
+**Staging Environment:**
+> "This looks like staging infrastructure. Would you like me to review it to ensure it matches your production setup? I can verify it's suitable for testing production-like scenarios."
+
+**Ambiguous Environment:**
+> "I see you're creating AWS infrastructure. To provide the best recommendations, could you tell me what environment this is for? (development, staging, production) This will help me tailor my suggestions to your needs."
 
 ## Contextual Triggers for Suggesting Reviews
 

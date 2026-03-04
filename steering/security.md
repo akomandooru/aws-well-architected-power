@@ -1554,6 +1554,426 @@ This companion guide provides:
 - Secrets management best practices
 - Application code security checklist
 
+## Context-Aware Security Trade-Off Guidance
+
+Security is often seen as non-negotiable, but the **level** and **approach** to security controls should be context-aware. While core security principles (no hardcoded secrets, least privilege) are always required, the implementation details depend on your specific situation.
+
+### Context Questions for Security Recommendations
+
+Before making security recommendations, gather context:
+
+1. **Data Classification**: What type of data? (public, internal, confidential, restricted)
+2. **Regulatory Requirements**: GDPR, HIPAA, PCI-DSS, SOC 2, FedRAMP, or none?
+3. **Environment**: Development, staging, or production?
+4. **Budget Constraints**: Tight, moderate, or flexible?
+5. **Compliance Maturity**: Startup, growth, or enterprise?
+
+### Trade-Off 1: Encryption Approaches
+
+#### Context-Dependent Encryption Decisions
+
+**Public Data (No Sensitive Information)**:
+```
+Recommendation: Encryption is OPTIONAL but recommended for defense-in-depth.
+
+Options:
+1. No Encryption
+   - Cost: $0
+   - Complexity: None
+   - Risk: Low (data is public anyway)
+   - Best for: Truly public data (marketing assets, public documentation)
+
+2. SSE-S3 (AWS-Managed Keys)
+   - Cost: $0 (included with S3)
+   - Complexity: Low (enable with one setting)
+   - Security: Basic encryption at rest
+   - Best for: Public data with defense-in-depth approach
+
+Trade-off: SSE-S3 adds zero cost and minimal complexity for additional security layer.
+Recommendation: Enable SSE-S3 for defense-in-depth (free, easy, no downside).
+```
+
+**Internal/Confidential Data (No Regulatory Requirements)**:
+```
+Recommendation: Encryption is REQUIRED. Choose approach based on control needs.
+
+Options:
+1. SSE-S3 (AWS-Managed Keys)
+   - Cost: $0
+   - Control: AWS manages keys, automatic rotation
+   - Audit: Basic CloudTrail logging
+   - Compliance: Meets basic encryption requirements
+   - Best for: Internal data, cost-sensitive projects
+
+2. KMS with AWS-Managed Keys
+   - Cost: $0 (AWS-managed CMKs are free)
+   - Control: AWS manages keys, automatic rotation
+   - Audit: CloudTrail logging of key usage
+   - Compliance: Better audit trail than SSE-S3
+   - Best for: Confidential data, moderate control needs
+
+3. KMS with Customer-Managed Keys (CMK)
+   - Cost: $1/month per key + $0.03 per 10,000 requests
+   - Control: Full control over key policies, rotation, deletion
+   - Audit: Comprehensive CloudTrail logging
+   - Compliance: Meets most regulatory requirements
+   - Best for: Confidential data, compliance needs, production
+
+Trade-off: KMS CMK costs $1/month but provides full control and audit trail.
+Recommendation: Use KMS CMK for production confidential data ($1/month is negligible).
+```
+
+**PII, Financial, or Health Data (Regulatory Requirements)**:
+```
+Recommendation: KMS with Customer-Managed Keys is REQUIRED (non-negotiable).
+
+REQUIRED Configuration:
+- KMS with customer-managed keys (CMK)
+- Automatic or manual key rotation enabled
+- Key policies with least privilege access
+- CloudTrail logging of all key operations
+- Documented key management procedures
+- Encryption in transit (TLS 1.2+)
+
+Cost: $1/month per key + $0.03 per 10,000 requests
+Complexity: Medium (key management, rotation, access control)
+
+This is NON-NEGOTIABLE for:
+- PII data (GDPR, CCPA)
+- Financial data (PCI-DSS)
+- Health data (HIPAA)
+- Regulated industries
+
+Trade-off: None - this is a compliance requirement.
+Non-compliance cost: Fines up to €20M (GDPR), $1.5M/year (HIPAA), $500K (PCI-DSS).
+```
+
+#### Environment-Specific Encryption
+
+| Environment | Public Data | Internal Data | PII/Regulated Data |
+|-------------|-------------|---------------|-------------------|
+| **Development** | Optional | SSE-S3 or KMS AWS-managed | KMS CMK (test keys) |
+| **Staging** | SSE-S3 | KMS AWS-managed or CMK | KMS CMK (production-like) |
+| **Production** | SSE-S3 | KMS CMK | KMS CMK (REQUIRED) |
+
+### Trade-Off 2: IAM Complexity vs. Security
+
+#### Context-Dependent IAM Approaches
+
+**Small Team (1-5 people), Startup**:
+```
+Recommendation: Balance security with operational simplicity.
+
+Approach:
+1. Use IAM roles for all AWS resources (REQUIRED)
+2. Use IAM Identity Center for human access (RECOMMENDED)
+3. Start with AWS-managed policies, refine to least privilege over time
+4. Enable MFA for all users (REQUIRED)
+5. Use separate AWS accounts for dev/prod (RECOMMENDED)
+
+Trade-off: Start with broader permissions, tighten as you grow.
+- Broader permissions: Faster development, some security risk
+- Least privilege from day 1: Slower development, maximum security
+
+Recommendation: Use AWS-managed policies initially (e.g., PowerUserAccess for devs),
+then create custom least-privilege policies as you understand access patterns.
+
+Rationale: For small teams, velocity matters. Start secure (MFA, roles, no root access)
+but don't over-engineer IAM policies before you understand your access patterns.
+```
+
+**Medium Team (6-20 people), Growth Stage**:
+```
+Recommendation: Implement structured IAM with least privilege.
+
+Approach:
+1. Use IAM Identity Center with groups and permission sets (REQUIRED)
+2. Create custom least-privilege policies for each role
+3. Use IAM Access Analyzer to generate policies from CloudTrail logs
+4. Implement SCPs for organization-wide guardrails
+5. Regular access reviews (quarterly)
+6. Separate accounts per environment and team
+
+Trade-off: More IAM complexity for better security and compliance.
+- Cost: 10-20 hours/month for IAM management
+- Benefit: Reduced blast radius, better compliance, audit trail
+
+Recommendation: Invest in proper IAM structure now to avoid refactoring later.
+```
+
+**Large Team (20+ people), Enterprise**:
+```
+Recommendation: Comprehensive IAM with automation and governance.
+
+REQUIRED:
+- IAM Identity Center with federated access
+- Least-privilege custom policies for all roles
+- SCPs for organization-wide controls
+- Automated access reviews and certification
+- Just-in-time access for privileged operations
+- Comprehensive audit logging and monitoring
+- Separate accounts per workload (not just per environment)
+
+Cost: Dedicated IAM/security team or 40+ hours/month
+Complexity: High (but necessary for scale and compliance)
+
+Trade-off: Significant IAM overhead for maximum security and compliance.
+Recommendation: This is non-negotiable at enterprise scale.
+```
+
+### Trade-Off 3: Security Monitoring Depth
+
+#### Context-Dependent Monitoring
+
+**Development Environment**:
+```
+Recommendation: Basic monitoring is sufficient.
+
+Minimal Security Monitoring:
+- CloudTrail enabled (REQUIRED - free tier covers most dev activity)
+- Basic CloudWatch alarms for root account usage
+- AWS Config for critical resources only (optional)
+- GuardDuty: Optional (consider for shared dev accounts)
+
+Cost: $0-20/month
+Complexity: Low
+
+Trade-off: Minimal monitoring cost vs. limited visibility.
+Recommendation: Basic monitoring is sufficient for dev. Invest in prod monitoring.
+```
+
+**Production Environment - Internal Tools**:
+```
+Recommendation: Standard security monitoring.
+
+Standard Security Monitoring:
+- CloudTrail enabled in all regions (REQUIRED)
+- GuardDuty enabled (REQUIRED)
+- Security Hub with AWS Foundational Security standard
+- CloudWatch alarms for security events
+- VPC Flow Logs for network analysis
+- AWS Config for compliance tracking
+
+Cost: $50-200/month (depending on activity)
+Complexity: Medium
+
+Trade-off: Monitoring cost vs. threat detection and compliance.
+Recommendation: Standard monitoring is required for production.
+```
+
+**Production Environment - Customer-Facing/Critical**:
+```
+Recommendation: Comprehensive security monitoring (REQUIRED).
+
+Comprehensive Security Monitoring:
+- CloudTrail enabled in all regions with S3 + CloudWatch Logs
+- GuardDuty enabled with S3 protection and EKS protection
+- Security Hub with multiple standards (CIS, PCI-DSS, etc.)
+- Amazon Macie for sensitive data discovery
+- IAM Access Analyzer for external access
+- AWS Config with automated remediation
+- VPC Flow Logs with analysis
+- CloudWatch Insights for log analysis
+- EventBridge rules for automated response
+- Third-party SIEM integration (Splunk, Datadog, etc.)
+
+Cost: $500-2000/month
+Complexity: High
+
+Trade-off: Significant monitoring cost vs. comprehensive threat detection.
+Recommendation: This is non-negotiable for critical systems.
+
+Rationale: 1-hour outage from security incident costs $10K-100K+.
+Monitoring cost is 1-5% of potential incident cost.
+```
+
+### Trade-Off 4: Network Security Complexity
+
+#### Context-Dependent Network Security
+
+**Simple Application (Single-Tier)**:
+```
+Recommendation: Basic VPC with security groups.
+
+Approach:
+- Single VPC with public and private subnets
+- Security groups for instance-level firewalls
+- NACLs at default (allow all)
+- VPC endpoints for AWS services (optional)
+- No NAT Gateway (use NAT instances or public subnets)
+
+Cost: $0-50/month
+Complexity: Low
+
+Trade-off: Simpler network vs. less defense-in-depth.
+Recommendation: Sufficient for simple applications with basic security needs.
+```
+
+**Multi-Tier Application (Web/App/DB)**:
+```
+Recommendation: Segmented VPC with defense-in-depth.
+
+Approach:
+- VPC with public, private, and data subnets
+- Security groups for each tier with least privilege
+- NACLs for subnet-level protection
+- VPC endpoints for AWS services (S3, DynamoDB)
+- NAT Gateway for private subnet internet access
+- VPC Flow Logs for traffic analysis
+
+Cost: $100-300/month (NAT Gateway is $32/month + data transfer)
+Complexity: Medium
+
+Trade-off: NAT Gateway cost vs. security and reliability.
+- NAT Gateway: $32/month + data transfer, highly available
+- NAT Instance: $10-20/month, single point of failure
+
+Recommendation: Use NAT Gateway for production (worth the cost for reliability).
+```
+
+**Highly Regulated/Sensitive Application**:
+```
+Recommendation: Comprehensive network security (REQUIRED).
+
+REQUIRED:
+- VPC with multiple subnet tiers (public, private, data, management)
+- Security groups with least privilege (no 0.0.0.0/0 except load balancers)
+- NACLs for subnet-level protection
+- VPC endpoints for all AWS services (avoid internet traffic)
+- NAT Gateway in multiple AZs
+- VPC Flow Logs with analysis
+- AWS Network Firewall for advanced filtering
+- PrivateLink for service access
+- Transit Gateway for multi-VPC connectivity
+- AWS WAF for application-layer protection
+
+Cost: $500-2000/month
+Complexity: High
+
+Trade-off: Significant network complexity vs. maximum security.
+Recommendation: This is required for regulated industries (HIPAA, PCI-DSS, FedRAMP).
+```
+
+### Trade-Off 5: Security vs. Developer Velocity
+
+#### Context-Dependent Security Controls
+
+**Startup/MVP Phase**:
+```
+Recommendation: Security fundamentals without over-engineering.
+
+REQUIRED (Non-Negotiable):
+- No hardcoded secrets (use Secrets Manager or Parameter Store)
+- IAM roles for all AWS resources (no access keys)
+- MFA for all users
+- Encryption for any sensitive data
+- CloudTrail enabled
+
+RECOMMENDED (Balance with velocity):
+- Start with AWS-managed IAM policies, refine later
+- Basic security monitoring (CloudTrail + GuardDuty)
+- Single AWS account initially, separate later
+- Manual security reviews before major releases
+
+DEFER (Add as you grow):
+- Comprehensive least-privilege IAM policies
+- Advanced monitoring and SIEM integration
+- Network segmentation beyond basic public/private
+- Automated security testing in CI/CD
+
+Trade-off: Faster development vs. comprehensive security.
+Recommendation: Implement security fundamentals, add advanced controls as you scale.
+
+Rationale: Perfect security on day 1 slows product validation. Implement fundamentals
+(no secrets in code, MFA, encryption) and add advanced controls as you grow.
+```
+
+**Growth Stage**:
+```
+Recommendation: Structured security with automation.
+
+Time to invest in:
+- Least-privilege IAM policies
+- Comprehensive monitoring (GuardDuty, Security Hub, Config)
+- Separate AWS accounts per environment
+- Security testing in CI/CD pipeline
+- Regular security reviews and penetration testing
+- Incident response procedures
+
+Cost: 10-20% of engineering time + $500-2000/month for tools
+Benefit: Reduced security incidents, faster compliance, better customer trust
+
+Trade-off: Security investment vs. feature development time.
+Recommendation: Allocate 10-20% of engineering time to security.
+```
+
+**Enterprise/Regulated**:
+```
+Recommendation: Comprehensive security program (REQUIRED).
+
+REQUIRED:
+- Dedicated security team
+- Comprehensive IAM with least privilege
+- Advanced monitoring and SIEM
+- Automated security testing
+- Regular penetration testing and audits
+- Incident response team and procedures
+- Compliance certifications (SOC 2, ISO 27001, etc.)
+- Security training for all engineers
+
+Cost: 20-30% of engineering budget
+Complexity: High
+
+Trade-off: None - this is required for enterprise and regulated industries.
+```
+
+### Decision Framework: Security Investment
+
+Use this framework to determine appropriate security investment:
+
+| Factor | Minimal | Standard | Comprehensive |
+|--------|---------|----------|---------------|
+| **Environment** | Development | Production (internal) | Production (customer-facing) |
+| **Data Sensitivity** | Public/Internal | Confidential | PII/Financial/Health |
+| **Regulatory Requirements** | None | Basic compliance | HIPAA/PCI-DSS/FedRAMP |
+| **Team Size** | 1-5 people | 6-20 people | 20+ people |
+| **Budget** | Tight | Moderate | Flexible |
+| **Encryption** | Optional/SSE-S3 | KMS AWS-managed | KMS CMK (REQUIRED) |
+| **IAM Complexity** | AWS-managed policies | Custom policies | Least privilege + automation |
+| **Monitoring** | CloudTrail only | GuardDuty + Security Hub | Comprehensive + SIEM |
+| **Network Security** | Basic VPC | Segmented VPC | Advanced (Firewall, PrivateLink) |
+| **Monthly Cost** | $0-50 | $200-500 | $1000-5000 |
+| **Engineering Time** | 5% | 10-20% | 20-30% |
+
+### Key Takeaways for Context-Aware Security
+
+1. **Security Fundamentals are Non-Negotiable**: No hardcoded secrets, IAM roles, MFA, encryption for sensitive data
+2. **Implementation Details are Context-Dependent**: Encryption approach, IAM complexity, monitoring depth
+3. **Regulatory Requirements Override Context**: HIPAA, PCI-DSS, GDPR requirements are mandatory
+4. **Environment Matters**: Different standards for dev vs. production
+5. **Balance Security and Velocity**: Especially important for startups and small teams
+6. **Invest Progressively**: Start with fundamentals, add advanced controls as you grow
+7. **Quantify Trade-Offs**: Use cost and time estimates to make informed decisions
+8. **Document Decisions**: Record why you chose specific security approaches
+
+### Anti-Patterns to Avoid
+
+❌ **Over-Engineering Security for MVP**: Spending months on perfect IAM policies before validating product
+❌ **Under-Investing in Production Security**: Treating production like development
+❌ **Ignoring Regulatory Requirements**: Assuming encryption is optional for PII data
+❌ **One-Size-Fits-All**: Same security controls for dev and prod
+❌ **Security as Afterthought**: Adding security after building the application
+❌ **Ignoring Cost**: Implementing expensive security controls without considering budget
+❌ **Analysis Paralysis**: Waiting for perfect security before launching
+
+✅ **Security Fundamentals First**: Implement non-negotiables (no secrets, MFA, encryption)
+✅ **Progressive Enhancement**: Add advanced controls as you grow
+✅ **Context-Aware Decisions**: Different approaches for different situations
+✅ **Compliance-Driven**: Let regulatory requirements drive security investment
+✅ **Balanced Approach**: Security that enables business, not blocks it
+✅ **Cost-Conscious**: Choose appropriate security level for budget and risk
+✅ **Pragmatic Security**: Ship with good security, improve continuously
+
 ## Summary
 
 The Security Pillar is foundational to building trustworthy systems on AWS. By implementing the best practices in this guide, you can:
@@ -1569,3 +1989,493 @@ The Security Pillar is foundational to building trustworthy systems on AWS. By i
 Remember: Security is not a one-time effort but a continuous process. Regularly review your security posture at both the infrastructure and application layers, stay informed about new threats and AWS security features, and always apply defense in depth principles.
 
 Use the Security Assessment MCP Server to automate security checks and the Knowledge MCP Server to access the latest AWS security guidance. When in doubt, follow the principle of least privilege and encrypt everything - in both infrastructure and application code.
+
+
+---
+
+## Mode-Aware Guidance for Security Reviews
+
+This section guides Kiro on how to adapt Security Pillar reviews based on the current review mode (Simple, Context-Aware, or Full Analysis). Each mode provides different levels of detail and analysis appropriate for different use cases.
+
+### Simple Mode - Security Reviews
+
+**When to Use:** CI/CD pipelines, quick checks, development environment reviews, pre-commit hooks
+
+**Token Budget:** 17-25K tokens | **Target Latency:** 2.5-6 seconds
+
+**What to Include in Simple Mode:**
+
+1. **Direct Violation Identification**
+   - Flag clear security violations without context gathering
+   - Use prescriptive language: "Enable encryption", "Add MFA", "Remove public access"
+   - Assign risk levels (High, Medium, Low) based on standard criteria
+   - Provide specific line numbers and file references
+
+2. **Prescriptive Recommendations**
+   - Give direct remediation steps without trade-off discussion
+   - Use code examples showing the fix
+   - Focus on Well-Architected best practices without customization
+   - No context questions about environment, data classification, or budget
+
+3. **Standard Risk Assessment**
+   - High Risk: Unencrypted sensitive data, public access to databases, overly permissive IAM
+   - Medium Risk: Missing MFA, single-AZ deployments, broad security groups
+   - Low Risk: Missing tags, suboptimal configurations, minor improvements
+
+4. **Output Format**
+   ```
+   ❌ HIGH RISK: S3 bucket lacks encryption at rest
+   Location: main.tf:45
+   Issue: server_side_encryption_configuration block is missing
+   Recommendation: Add server_side_encryption_configuration with AES256 or aws:kms
+   Remediation:
+   [Code example showing the fix]
+   ```
+
+**What to EXCLUDE in Simple Mode:**
+- ❌ Context questions (environment type, SLA, budget, data classification)
+- ❌ Trade-off discussions (cost vs. security, complexity vs. benefit)
+- ❌ Alternative approaches with pros/cons
+- ❌ Decision matrices or scenario matching
+- ❌ Conditional guidance based on context
+- ❌ Long explanations of why something is a best practice
+
+**Example Simple Mode Output:**
+```
+Security Review Results (Simple Mode)
+
+❌ HIGH RISK: RDS instance lacks encryption at rest
+Location: database.tf:23
+Recommendation: Enable storage_encrypted = true
+Remediation: Add encryption configuration to RDS instance
+
+❌ HIGH RISK: S3 bucket allows public access
+Location: storage.tf:12
+Recommendation: Set block_public_acls = true and block_public_policy = true
+Remediation: Add aws_s3_bucket_public_access_block resource
+
+⚠️ MEDIUM RISK: Security group allows SSH from 0.0.0.0/0
+Location: network.tf:45
+Recommendation: Restrict SSH access to specific IP ranges
+Remediation: Change cidr_blocks from ["0.0.0.0/0"] to your office IP range
+
+✓ 3 issues found: 2 high-risk, 1 medium-risk
+```
+
+### Context-Aware Mode - Security Reviews
+
+**When to Use:** Interactive sessions, production reviews, staging reviews, architecture decisions
+
+**Token Budget:** 35-50K tokens | **Target Latency:** 4-8 seconds
+
+**What to Include in Context-Aware Mode:**
+
+1. **Context Gathering (3-5 Key Questions)**
+   - "What environment is this? (development/staging/production)"
+   - "What's your data classification? (public/internal/confidential/PII)"
+   - "What are your regulatory requirements? (GDPR/HIPAA/PCI-DSS/none)"
+   - "What's your budget constraint? (tight/moderate/flexible)"
+   - "What's your team size and security maturity?"
+
+2. **Conditional Recommendations Based on Context**
+   - Provide different guidance for dev vs. production
+   - Adjust encryption recommendations based on data classification
+   - Explain when security controls are required vs. optional
+   - Consider budget constraints in recommendations
+
+3. **Trade-Off Explanations for Key Decisions**
+   - Explain security vs. cost trade-offs (e.g., KMS CMK vs. SSE-S3)
+   - Discuss security vs. complexity trade-offs (e.g., IAM complexity)
+   - Provide cost estimates for security improvements
+   - Explain when to defer security controls vs. implement immediately
+
+4. **Alternative Approaches with Pros/Cons**
+   - Present multiple valid security approaches
+   - Explain when each approach is appropriate
+   - Provide decision criteria for choosing between options
+
+5. **Output Format**
+   ```
+   ⚠️ CONTEXT-DEPENDENT: RDS instance lacks Multi-AZ configuration
+   Location: database.tf:23
+   
+   Context Questions:
+   - What environment is this? (development/staging/production)
+   - What's your availability requirement?
+   - What's your data classification?
+   
+   Conditional Guidance:
+   - FOR production with confidential data: Multi-AZ is REQUIRED
+     - Security benefit: Automatic failover, data redundancy
+     - Cost impact: 2x database cost (~$200/mo → ~$400/mo)
+   
+   - FOR development: Single-AZ is ACCEPTABLE
+     - Cost savings: 50% reduction
+     - Trade-off: Manual recovery needed, acceptable for dev
+   
+   Recommendation: Based on your context, choose appropriate configuration.
+   ```
+
+**What to INCLUDE in Context-Aware Mode:**
+- ✅ Context questions (3-5 key questions, not exhaustive)
+- ✅ Conditional recommendations based on gathered context
+- ✅ Trade-off explanations for major security decisions
+- ✅ Cost-benefit analysis for key recommendations
+- ✅ Alternative approaches with use cases
+- ✅ Environment-specific guidance (dev/staging/prod)
+- ✅ Regulatory requirement explanations
+
+**What to EXCLUDE in Context-Aware Mode:**
+- ❌ Comprehensive decision matrices (save for Full Analysis)
+- ❌ Detailed quantitative cost analysis (save for Full Analysis)
+- ❌ Scenario matching with examples (save for Full Analysis)
+- ❌ Multi-pillar impact analysis (save for Full Analysis)
+- ❌ Long-term strategic implications (save for Full Analysis)
+
+**Example Context-Aware Mode Output:**
+```
+Security Review Results (Context-Aware Mode)
+
+Context Gathered:
+- Environment: Production
+- Data Classification: Confidential (customer data)
+- Regulatory Requirements: GDPR compliance required
+- Budget: Moderate ($5K/month infrastructure)
+- Team Size: 10 engineers
+
+❌ HIGH RISK: S3 bucket lacks encryption at rest
+Location: storage.tf:12
+
+Context Analysis:
+- Production environment with customer data
+- GDPR requires encryption for personal data
+- This is a compliance requirement, not optional
+
+Recommendation: Enable KMS encryption with customer-managed keys (REQUIRED)
+
+Trade-Offs:
+- Cost: $1/month per key + $0.03 per 10,000 requests
+- Complexity: Medium (key management, rotation)
+- Benefit: GDPR compliance, full audit trail, key control
+
+Alternative Approaches:
+1. SSE-S3 (AWS-managed): NOT SUFFICIENT for GDPR
+2. KMS AWS-managed: Meets basic requirements but limited control
+3. KMS CMK: RECOMMENDED - full control and audit trail
+
+Decision: Use KMS CMK (option 3) for GDPR compliance.
+
+⚠️ CONTEXT-DEPENDENT: Security group allows SSH from 0.0.0.0/0
+Location: network.tf:45
+
+Context Analysis:
+- Production environment
+- Moderate security maturity team
+
+Conditional Guidance:
+- FOR production: Restrict to specific IP ranges (REQUIRED)
+  - Options: Office IP, VPN IP, bastion host only
+  - Cost: $0 (configuration change only)
+  - Complexity: Low (update security group rules)
+
+- FOR development: 0.0.0.0/0 may be acceptable if:
+  - Using key-based authentication (no passwords)
+  - Temporary instances (not long-lived)
+  - Non-sensitive data
+
+Recommendation: Restrict SSH to office IP range or VPN for production.
+
+Trade-Off: Convenience vs. security
+- 0.0.0.0/0: Easy access, high security risk
+- Specific IPs: Requires VPN/IP management, much more secure
+
+Cost-Benefit: $0 cost, 10 minutes to implement, eliminates major attack vector.
+
+✓ 2 issues found: 1 required fix (GDPR), 1 context-dependent recommendation
+```
+
+### Full Analysis Mode - Security Reviews
+
+**When to Use:** Major architecture decisions, explicit user request, complex trade-off scenarios, compliance planning
+
+**Token Budget:** 70-95K tokens | **Target Latency:** 5-10 seconds
+
+**What to Include in Full Analysis Mode:**
+
+1. **Comprehensive Context Gathering**
+   - All context questions from Context-Aware Mode
+   - Additional questions about long-term plans, growth expectations
+   - Compliance roadmap and certification goals
+   - Security maturity assessment
+   - Incident history and risk tolerance
+
+2. **Detailed Trade-Off Analysis Across All Pillars**
+   - Security vs. Cost with quantitative estimates
+   - Security vs. Performance (encryption overhead, network latency)
+   - Security vs. Operational Complexity
+   - Security vs. Developer Velocity
+   - Multi-pillar impact analysis
+
+3. **Decision Matrices Comparing Multiple Options**
+   - Load and present decision matrices for major security decisions
+   - Compare 3-5 options with scoring across multiple criteria
+   - Include quantitative cost estimates and ROI calculations
+   - Provide weighted recommendations based on context
+
+4. **Scenario Matching with Examples**
+   - Match user's situation to common scenarios (startup, growth, enterprise)
+   - Provide examples of similar companies and their security approaches
+   - Include lessons learned and common pitfalls
+   - Reference industry benchmarks and standards
+
+5. **Quantitative Cost-Benefit Analysis**
+   - Detailed cost breakdowns (monthly, annual, 3-year)
+   - ROI calculations for security investments
+   - Downtime cost estimates vs. security improvement costs
+   - Compliance cost avoidance (fines, penalties)
+
+6. **Long-Term Implications and Roadmap**
+   - Discuss how security decisions impact future scalability
+   - Provide migration paths from current to ideal state
+   - Explain technical debt implications of security shortcuts
+   - Suggest phased implementation approaches
+
+7. **Output Format**
+   ```
+   🔍 COMPREHENSIVE ANALYSIS: Database Encryption Strategy
+   Location: database.tf:23
+   
+   Context Gathered:
+   - Environment: Production
+   - Data Classification: PII (customer names, emails, addresses)
+   - Regulatory: GDPR compliance required
+   - Budget: Moderate ($5K/month, can increase for compliance)
+   - Team: 10 engineers, moderate security maturity
+   - Growth: 2x expected in 12 months
+   - Compliance Goals: SOC 2 Type II in 6 months
+   
+   Decision Matrix: Database Encryption Options
+   
+   | Option | Security | Cost | Complexity | Compliance | Audit | Best For |
+   |--------|----------|------|------------|------------|-------|----------|
+   | No Encryption | ⭐ | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ | ❌ | ❌ | Never (non-compliant) |
+   | AWS-Managed Keys | ⭐⭐⭐ | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ | ⚠️ | ⭐⭐ | Basic compliance |
+   | KMS CMK | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐ | ⭐⭐⭐ | ✅ | ⭐⭐⭐⭐⭐ | GDPR, SOC 2 |
+   | HSM/CloudHSM | ⭐⭐⭐⭐⭐ | ⭐ | ⭐ | ✅ | ⭐⭐⭐⭐⭐ | FIPS 140-2 Level 3 |
+   
+   Recommended: KMS with Customer-Managed Keys (CMK)
+   
+   Pillar Impact Analysis:
+   ✅ Security: +HIGH
+      - Encryption at rest for all PII data
+      - Full control over key policies and rotation
+      - Comprehensive audit trail via CloudTrail
+      - Meets GDPR Article 32 (security of processing)
+      - Meets SOC 2 CC6.1 (logical access controls)
+   
+   ⚠️ Cost: +LOW
+      - KMS CMK: $1/month per key
+      - API requests: $0.03 per 10,000 requests (~$5/month)
+      - Total: ~$6/month ($72/year)
+      - Negligible compared to $5K/month infrastructure budget (0.1%)
+   
+   ⚠️ Performance: -MINIMAL
+      - Encryption overhead: <1% CPU impact
+      - Latency: +0.5-1ms per encrypted operation
+      - Negligible for most applications
+   
+   ✅ Operational Excellence: +MEDIUM
+      - Automated key rotation available
+      - CloudTrail logging of all key operations
+      - Centralized key management
+      - Requires key management procedures
+   
+   ⚠️ Reliability: NEUTRAL
+      - KMS is highly available (99.99% SLA)
+      - Multi-region key replication available
+      - No impact on database availability
+   
+   Cost-Benefit Analysis:
+   - Implementation Cost: $6/month ($72/year)
+   - Engineering Time: 4 hours initial setup + 1 hour/month management
+   - Compliance Benefit: Meets GDPR requirements (avoids fines up to €20M)
+   - SOC 2 Benefit: Required for certification (enables enterprise sales)
+   - Downtime Avoidance: N/A (encryption doesn't prevent downtime)
+   - Net Benefit: Massive positive ROI (compliance enabler)
+   
+   Trade-Off Scenarios:
+   
+   1. Startup with Tight Budget:
+      - Start with AWS-managed keys (free)
+      - Migrate to KMS CMK before handling PII
+      - Cost: $0 initially, $6/month after PII
+      - Risk: Must migrate before collecting PII (technical debt)
+   
+   2. Growth Stage with Moderate Budget (YOUR SITUATION):
+      - Implement KMS CMK immediately
+      - Enable automatic key rotation
+      - Document key management procedures
+      - Cost: $6/month (negligible)
+      - Benefit: GDPR compliant, SOC 2 ready, no migration needed
+   
+   3. Enterprise with Strict Compliance:
+      - KMS CMK with manual rotation
+      - Multi-region key replication
+      - Dedicated key management team
+      - Consider CloudHSM for FIPS 140-2 Level 3
+      - Cost: $6-1200/month (depending on HSM needs)
+   
+   Decision: IMPLEMENT KMS CMK (Option 2)
+   
+   Rationale:
+   - GDPR compliance is non-negotiable for PII data
+   - SOC 2 certification requires encryption with customer-managed keys
+   - Cost is negligible ($6/month = 0.1% of infrastructure budget)
+   - No performance impact (<1% CPU, +1ms latency)
+   - Enables enterprise sales (SOC 2 requirement)
+   - Avoids future migration (implement correctly now)
+   
+   Implementation Roadmap:
+   
+   Phase 1 (Week 1): Enable KMS CMK for RDS
+   - Create KMS customer-managed key
+   - Enable automatic key rotation
+   - Update RDS instance to use KMS CMK
+   - Test encryption and key access
+   - Estimated time: 4 hours
+   
+   Phase 2 (Week 2): Implement key management procedures
+   - Document key policies and access controls
+   - Set up CloudTrail monitoring for key usage
+   - Create CloudWatch alarms for key operations
+   - Train team on key management
+   - Estimated time: 4 hours
+   
+   Phase 3 (Month 2): Extend to all data stores
+   - Enable KMS CMK for S3 buckets with PII
+   - Enable KMS CMK for EBS volumes
+   - Enable KMS CMK for backups
+   - Estimated time: 8 hours
+   
+   Total Implementation: 16 hours over 2 months
+   Total Cost: $6/month ongoing
+   
+   Risk of NOT Implementing:
+   - GDPR non-compliance: Fines up to €20M or 4% of global revenue
+   - SOC 2 failure: Cannot sell to enterprise customers
+   - Data breach impact: Unencrypted data = higher liability
+   - Reputation damage: "Company X leaked unencrypted customer data"
+   
+   Risk of Implementing:
+   - Minimal: $6/month cost, 16 hours engineering time
+   - Key management complexity (mitigated by automation)
+   - Potential key deletion risk (mitigated by key policies)
+   
+   Conclusion: The decision is clear - implement KMS CMK immediately.
+   Cost is negligible, compliance benefit is massive, risk of not implementing is severe.
+   ```
+
+**What to INCLUDE in Full Analysis Mode:**
+- ✅ Comprehensive context gathering (10+ questions)
+- ✅ Detailed trade-off analysis across all pillars
+- ✅ Decision matrices with 3-5 options compared
+- ✅ Quantitative cost-benefit analysis with ROI
+- ✅ Scenario matching (startup/growth/enterprise)
+- ✅ Long-term implications and technical debt discussion
+- ✅ Phased implementation roadmap
+- ✅ Risk analysis (risk of implementing vs. not implementing)
+- ✅ Multi-pillar impact analysis
+- ✅ Industry benchmarks and standards
+- ✅ Compliance cost avoidance calculations
+
+**What to EXCLUDE in Full Analysis Mode:**
+- Nothing - Full Analysis Mode includes everything
+
+**Example Full Analysis Mode Output:**
+See the comprehensive example above for database encryption strategy.
+
+### Mode Selection for Security Reviews
+
+**Automatic Mode Detection:**
+
+1. **Simple Mode Triggers:**
+   - CI/CD environment (CI=true)
+   - File path contains `/dev/` or `-dev.`
+   - User requests "quick review" or "fast check"
+   - Pre-commit hook execution
+
+2. **Context-Aware Mode Triggers:**
+   - File path contains `/prod/` or `/staging/`
+   - Interactive session (user can answer questions)
+   - User requests "review with context"
+   - Default for most interactive reviews
+
+3. **Full Analysis Mode Triggers:**
+   - User explicitly requests "full analysis" or "comprehensive review"
+   - User asks "compare options" or "trade-off analysis"
+   - Major architecture decision context
+   - Compliance planning session
+
+**Mode Switching Mid-Session:**
+
+Users can escalate or simplify modes during a review:
+
+- **Escalate:** "Can you explain the trade-offs?" → Switch to Context-Aware
+- **Escalate:** "I need a full analysis with cost comparison" → Switch to Full Analysis
+- **Simplify:** "Just tell me what's wrong" → Switch to Simple
+
+When switching modes, preserve all context already gathered (don't re-ask questions).
+
+### Best Practices for Mode-Aware Security Reviews
+
+**For Simple Mode:**
+- Focus on clear violations only
+- Use prescriptive language without explanation
+- Keep output concise and actionable
+- Provide code examples for fixes
+- Don't ask context questions
+
+**For Context-Aware Mode:**
+- Ask 3-5 key context questions upfront
+- Provide conditional guidance based on context
+- Explain trade-offs for major decisions
+- Offer 2-3 alternative approaches
+- Include cost estimates for recommendations
+
+**For Full Analysis Mode:**
+- Gather comprehensive context (10+ questions)
+- Load relevant decision matrices
+- Provide quantitative cost-benefit analysis
+- Include scenario matching and examples
+- Discuss long-term implications
+- Provide phased implementation roadmap
+
+### Common Security Review Scenarios by Mode
+
+**Scenario 1: Unencrypted S3 Bucket**
+
+- **Simple Mode:** "❌ HIGH RISK: Enable encryption. Add server_side_encryption_configuration."
+- **Context-Aware Mode:** "⚠️ CONTEXT-DEPENDENT: For production with confidential data, use KMS CMK ($1/month). For dev, SSE-S3 is acceptable."
+- **Full Analysis Mode:** "🔍 COMPREHENSIVE ANALYSIS: [Decision matrix comparing SSE-S3, KMS AWS-managed, KMS CMK with costs, compliance, and use cases]"
+
+**Scenario 2: Overly Permissive IAM Policy**
+
+- **Simple Mode:** "❌ HIGH RISK: Policy allows * actions. Restrict to specific actions needed."
+- **Context-Aware Mode:** "⚠️ CONTEXT-DEPENDENT: For small team (1-5 people), start with AWS-managed policies. For larger team, implement least privilege."
+- **Full Analysis Mode:** "🔍 COMPREHENSIVE ANALYSIS: [Decision matrix comparing IAM approaches for different team sizes with complexity, security, and cost trade-offs]"
+
+**Scenario 3: Missing Multi-AZ**
+
+- **Simple Mode:** "⚠️ MEDIUM RISK: Enable Multi-AZ for high availability."
+- **Context-Aware Mode:** "⚠️ CONTEXT-DEPENDENT: For production with 99.9% SLA, Multi-AZ is REQUIRED (2x cost). For dev, Single-AZ is acceptable."
+- **Full Analysis Mode:** "🔍 COMPREHENSIVE ANALYSIS: [Decision matrix comparing Single-AZ, Multi-AZ, Aurora Global with availability, cost, and use cases]"
+
+### Summary
+
+Mode-aware security reviews ensure that Kiro provides the right level of detail for each situation:
+
+- **Simple Mode:** Fast, prescriptive, no context - perfect for CI/CD and quick checks
+- **Context-Aware Mode:** Balanced, conditional, with context - ideal for interactive production reviews
+- **Full Analysis Mode:** Comprehensive, detailed, with matrices - best for major architecture decisions
+
+Always announce the mode at the start of a review and allow users to switch modes if they need more or less detail. Preserve context when switching modes to avoid re-asking questions.

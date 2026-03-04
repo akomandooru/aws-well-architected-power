@@ -1997,3 +1997,1279 @@ This guide covers:
 - Batch operations to reduce API calls
 - Stream processing for large datasets
 
+
+
+## Context-Aware Performance Trade-Off Guidance
+
+Performance optimization is not one-size-fits-all. The right performance approach depends on your specific requirements, budget, and operational constraints. This section provides context-aware guidance to help you make informed trade-offs between performance, cost, and complexity.
+
+### Context Questions for Performance Recommendations
+
+Before making performance recommendations, gather context:
+
+1. **Latency Requirements**: What are your latency targets? (<10ms, <100ms, <1s, >1s)
+2. **Throughput Requirements**: What's your expected request rate? (requests/second, GB/day)
+3. **Availability Requirements**: What's your SLA? (99%, 99.9%, 99.99%)
+4. **Budget Constraints**: What's your budget sensitivity? (tight, moderate, flexible)
+5. **Environment**: Development, staging, or production?
+6. **Data Volume**: How much data? (MB, GB, TB, PB)
+7. **Traffic Pattern**: Steady, spiky, seasonal, or unpredictable?
+8. **Geographic Distribution**: Single region, multi-region, or global?
+
+### Trade-Off 1: Instance Sizing Approaches
+
+#### Context-Dependent Instance Sizing
+
+**Development/Testing Environment**:
+```
+Recommendation: Use smaller, burstable instances to minimize cost.
+
+Approach:
+- Use t3/t4g instances (burstable, cost-effective)
+- Start with t3.medium or t3.large
+- Accept occasional performance throttling
+- No auto-scaling needed (fixed capacity)
+
+Cost: $30-60/month per instance
+Performance: Variable (CPU credits), acceptable for dev/test
+Complexity: Low
+
+Trade-off: Lower cost vs. inconsistent performance.
+Recommendation: t3 instances are perfect for dev/test where cost matters more than performance.
+
+Rationale: Development environments don't need production-level performance.
+Save 60-70% on compute costs compared to production instances.
+```
+
+**Production - Low Traffic (<100 req/s)**:
+```
+Recommendation: Use general-purpose instances with moderate sizing.
+
+Approach:
+- Use m6i or m6a instances (balanced compute/memory)
+- Start with m6i.large or m6i.xlarge
+- Basic auto-scaling (min 2, max 4-6 instances)
+- Target 60-70% CPU utilization
+
+Cost: $120-240/month per instance
+Performance: Consistent, suitable for moderate traffic
+Complexity: Medium
+
+Trade-off: Balanced cost and performance.
+Recommendation: m6i instances provide good price/performance for most workloads.
+
+Example: Small e-commerce site, internal tools, small SaaS applications.
+```
+
+**Production - High Traffic (>1000 req/s)**:
+```
+Recommendation: Use compute-optimized instances with aggressive auto-scaling.
+
+Approach:
+- Use c6i or c7g instances (compute-optimized)
+- Start with c6i.xlarge or c6i.2xlarge
+- Aggressive auto-scaling (min 4, max 20+ instances)
+- Target 70% CPU utilization
+- Use warm pools for faster scaling
+
+Cost: $150-300/month per instance (but better per-request cost)
+Performance: High throughput, low latency
+Complexity: Medium-High
+
+Trade-off: Higher base cost vs. better per-request economics at scale.
+Recommendation: c6i instances provide best performance per dollar at high traffic.
+
+Example: High-traffic APIs, video processing, data analytics.
+```
+
+**Production - Latency-Sensitive (<10ms P99)**:
+```
+Recommendation: Use latest-generation instances with provisioned capacity.
+
+REQUIRED:
+- Latest generation compute-optimized (c7g Graviton3 or c6i)
+- Larger instance sizes (2xlarge or 4xlarge) for consistent performance
+- Provisioned capacity (no auto-scaling delays)
+- Enhanced networking enabled
+- Placement groups for low-latency communication
+
+Cost: $300-600/month per instance
+Performance: Ultra-low latency, consistent P99
+Complexity: High
+
+Trade-off: Significant cost vs. guaranteed low latency.
+Recommendation: This is required for latency-sensitive applications.
+
+Example: Financial trading, real-time gaming, high-frequency APIs.
+Rationale: 10ms latency requirement eliminates cheaper options.
+```
+
+#### Instance Type Decision Matrix
+
+| Latency Target | Traffic Level | Environment | Recommended Instance | Monthly Cost/Instance | Auto-Scaling |
+|----------------|---------------|-------------|---------------------|----------------------|--------------|
+| **>1s** | Any | Dev/Test | t3.medium | $30 | No |
+| **<1s** | Low (<100 req/s) | Production | m6i.large | $120 | Basic (2-4) |
+| **<100ms** | Medium (100-1000 req/s) | Production | m6i.xlarge | $240 | Moderate (2-8) |
+| **<100ms** | High (>1000 req/s) | Production | c6i.xlarge | $150 | Aggressive (4-20) |
+| **<10ms** | Any | Production | c7g.2xlarge | $400 | Provisioned (no scaling) |
+
+### Trade-Off 2: Caching Strategies
+
+#### Context-Dependent Caching
+
+**No Caching (Simple Applications)**:
+```
+When to use:
+- Data changes frequently (every request)
+- Very low traffic (<10 req/s)
+- Development/testing environments
+- Data must always be fresh (no staleness acceptable)
+
+Cost: $0
+Latency: Database latency (10-50ms typical)
+Complexity: None
+
+Trade-off: Zero caching cost vs. higher database load and latency.
+Recommendation: Skip caching for simple, low-traffic applications.
+
+Example: Admin dashboards, internal tools with <10 users.
+```
+
+**Application-Level Caching (In-Memory)**:
+```
+When to use:
+- Moderate traffic (10-100 req/s)
+- Data changes infrequently (minutes to hours)
+- Single-instance or small deployments
+- Budget-conscious projects
+
+Approach:
+- Use in-memory cache (Python dict, Node.js Map, etc.)
+- Implement TTL-based expiration
+- Cache size limit with LRU eviction
+
+Cost: $0 (uses existing instance memory)
+Latency: <1ms (in-memory access)
+Complexity: Low (simple implementation)
+
+Trade-off: No additional cost vs. cache not shared across instances.
+Recommendation: Start here for moderate traffic before adding external cache.
+
+Example:
+```python
+from functools import lru_cache
+from datetime import datetime, timedelta
+
+# Simple in-memory cache with TTL
+cache = {}
+cache_ttl = {}
+
+def get_cached(key, ttl_seconds=300):
+    if key in cache:
+        if datetime.now() < cache_ttl[key]:
+            return cache[key]
+        else:
+            del cache[key]
+            del cache_ttl[key]
+    return None
+
+def set_cached(key, value, ttl_seconds=300):
+    cache[key] = value
+    cache_ttl[key] = datetime.now() + timedelta(seconds=ttl_seconds)
+```
+
+**ElastiCache Redis (Distributed Caching)**:
+```
+When to use:
+- High traffic (>100 req/s)
+- Multiple application instances
+- Data changes infrequently (minutes to hours)
+- Need cache sharing across instances
+
+Approach:
+- Use ElastiCache Redis cluster
+- Start with cache.t4g.micro or cache.t4g.small
+- Implement cache-aside pattern
+- Use appropriate TTLs (5-30 minutes typical)
+
+Cost: $15-50/month (t4g.micro to t4g.small)
+Latency: 1-5ms (network + Redis)
+Complexity: Medium (Redis client, connection pooling)
+
+Trade-off: $15-50/month cost vs. shared cache and reduced database load.
+Recommendation: Use for production applications with >100 req/s.
+
+Benefit: Reduces database load by 70-90%, improves latency by 10-50x.
+ROI: $15/month cache can save $100+/month in database costs.
+```
+
+**ElastiCache Redis with Multi-Layer Caching**:
+```
+When to use:
+- Very high traffic (>1000 req/s)
+- Latency-sensitive (<50ms P99)
+- Read-heavy workloads (90%+ reads)
+- Budget allows for optimization
+
+Approach:
+- L1: In-memory cache (application)
+- L2: ElastiCache Redis
+- L3: Database
+- Implement cache promotion (L2 → L1 for hot data)
+
+Cost: $50-200/month (cache.r6g.large or larger)
+Latency: <1ms (L1), 1-5ms (L2), 10-50ms (L3)
+Complexity: High (multi-layer cache management)
+
+Trade-off: Higher cost and complexity vs. optimal performance.
+Recommendation: Use for high-traffic, latency-sensitive applications.
+
+Example: High-traffic APIs, social media feeds, e-commerce product catalogs.
+```
+
+**DynamoDB with DAX (Microsecond Latency)**:
+```
+When to use:
+- Ultra-low latency required (<10ms P99)
+- DynamoDB as primary database
+- Read-heavy workloads
+- Budget allows for premium performance
+
+Approach:
+- Use DynamoDB with DAX cluster
+- DAX provides microsecond read latency
+- 3-node cluster for high availability
+
+Cost: $200-400/month (dax.t3.small cluster)
+Latency: <1ms (DAX), vs 5-10ms (DynamoDB alone)
+Complexity: Medium (DAX client integration)
+
+Trade-off: $200-400/month vs. microsecond latency.
+Recommendation: Use when <10ms latency is required for DynamoDB.
+
+Benefit: 10x latency improvement over DynamoDB alone.
+```
+
+#### Caching Decision Matrix
+
+| Traffic Level | Latency Target | Data Freshness | Recommended Caching | Monthly Cost | Latency Improvement |
+|---------------|----------------|----------------|---------------------|--------------|---------------------|
+| **<10 req/s** | >1s | Any | No caching | $0 | N/A |
+| **10-100 req/s** | <1s | Minutes-Hours | In-memory | $0 | 10-50x |
+| **100-1000 req/s** | <100ms | Minutes-Hours | ElastiCache (t4g.small) | $30/month | 10-50x |
+| **>1000 req/s** | <50ms | Minutes-Hours | ElastiCache (r6g.large) + L1 | $150/month | 20-100x |
+| **>1000 req/s** | <10ms | Minutes-Hours | DAX (for DynamoDB) | $300/month | 10x |
+
+### Trade-Off 3: Database Performance Optimization
+
+#### Context-Dependent Database Sizing
+
+**Development/Testing**:
+```
+Recommendation: Use smallest instance with basic configuration.
+
+Approach:
+- db.t3.micro or db.t4g.micro
+- Single-AZ (no Multi-AZ)
+- gp2 storage (20-100 GB)
+- No read replicas
+- Basic backup retention (7 days)
+
+Cost: $15-30/month
+Performance: Limited, acceptable for dev/test
+Complexity: Low
+
+Trade-off: Minimal cost vs. limited performance.
+Recommendation: Perfect for development and testing.
+```
+
+**Production - Low Traffic (<100 queries/s)**:
+```
+Recommendation: Use general-purpose instance with standard configuration.
+
+Approach:
+- db.t3.medium or db.t4g.medium
+- Multi-AZ for high availability
+- gp3 storage (100-500 GB, 3000 IOPS)
+- No read replicas initially
+- 30-day backup retention
+
+Cost: $100-200/month
+Performance: Suitable for moderate workloads
+Complexity: Medium
+
+Trade-off: Balanced cost and reliability.
+Recommendation: Standard production configuration for most applications.
+```
+
+**Production - High Traffic (>1000 queries/s)**:
+```
+Recommendation: Use memory-optimized instance with read replicas.
+
+Approach:
+- db.r6g.large or db.r6g.xlarge (Graviton2)
+- Multi-AZ for high availability
+- gp3 storage (500-1000 GB, 10000 IOPS)
+- 1-2 read replicas for read scaling
+- Performance Insights enabled
+- 30-day backup retention
+
+Cost: $400-800/month
+Performance: High throughput, low latency
+Complexity: Medium-High
+
+Trade-off: Higher cost vs. better performance and scalability.
+Recommendation: Required for high-traffic applications.
+
+Benefit: Read replicas offload 50-80% of read traffic from primary.
+```
+
+**Production - Latency-Sensitive (<10ms queries)**:
+```
+Recommendation: Use large memory-optimized instance with io2 storage.
+
+REQUIRED:
+- db.r6g.2xlarge or larger
+- Multi-AZ for high availability
+- io2 storage (1000+ GB, 20000+ IOPS)
+- Multiple read replicas
+- Performance Insights enabled
+- Enhanced monitoring (1-second granularity)
+- Connection pooling (RDS Proxy)
+
+Cost: $1000-2000/month
+Performance: Ultra-low latency, high throughput
+Complexity: High
+
+Trade-off: Significant cost vs. guaranteed low latency.
+Recommendation: This is required for latency-sensitive applications.
+
+Example: Financial applications, real-time analytics, high-frequency trading.
+```
+
+#### Database Optimization Decision Matrix
+
+| Query Rate | Latency Target | Read/Write Ratio | Recommended Config | Monthly Cost | Key Features |
+|------------|----------------|------------------|-------------------|--------------|--------------|
+| **<10 q/s** | >1s | Any | db.t3.micro, gp2 | $20 | Single-AZ, basic |
+| **10-100 q/s** | <1s | Any | db.t3.medium, gp3, Multi-AZ | $150 | Standard prod |
+| **100-1000 q/s** | <100ms | 80/20 read | db.r6g.large, gp3, 1 replica | $500 | Read scaling |
+| **>1000 q/s** | <50ms | 90/10 read | db.r6g.xlarge, gp3, 2 replicas | $800 | High performance |
+| **>1000 q/s** | <10ms | Any | db.r6g.2xlarge, io2, RDS Proxy | $1500 | Ultra-low latency |
+
+### Trade-Off 4: Storage Performance
+
+#### Context-Dependent Storage Selection
+
+**Development/Testing**:
+```
+Recommendation: Use gp2 or gp3 with default settings.
+
+Approach:
+- gp2 or gp3 volumes
+- Default IOPS (3000 for gp3)
+- Minimal size (20-100 GB)
+
+Cost: $2-10/month
+Performance: 3000 IOPS, 125 MB/s
+Complexity: Low
+
+Trade-off: Minimal cost vs. basic performance.
+Recommendation: gp2/gp3 defaults are sufficient for dev/test.
+```
+
+**Production - General Purpose**:
+```
+Recommendation: Use gp3 with configured IOPS and throughput.
+
+Approach:
+- gp3 volumes
+- 3000-10000 IOPS (based on workload)
+- 125-500 MB/s throughput
+- Size based on data needs (100-1000 GB)
+
+Cost: $10-100/month
+Performance: Up to 16,000 IOPS, 1,000 MB/s
+Complexity: Low
+
+Trade-off: Moderate cost vs. good performance.
+Recommendation: gp3 is best price/performance for most workloads.
+
+Benefit: gp3 is 20% cheaper than gp2 with better performance.
+```
+
+**Production - Database (High IOPS)**:
+```
+Recommendation: Use io2 for consistent high IOPS.
+
+Approach:
+- io2 volumes
+- 10,000-64,000 IOPS (based on database needs)
+- Size based on data needs (500-5000 GB)
+- 99.999% durability
+
+Cost: $100-500/month
+Performance: Up to 64,000 IOPS, 1,000 MB/s, consistent
+Complexity: Medium
+
+Trade-off: Higher cost vs. consistent high performance.
+Recommendation: Use io2 for production databases with high IOPS needs.
+
+Example: High-traffic databases, transactional workloads, latency-sensitive apps.
+```
+
+**Production - Throughput-Intensive**:
+```
+Recommendation: Use st1 (HDD) for sequential access workloads.
+
+When to use:
+- Log processing, data warehousing
+- Sequential access patterns
+- Throughput more important than IOPS
+- Cost-sensitive workloads
+
+Approach:
+- st1 volumes (throughput-optimized HDD)
+- 500 MB/s throughput
+- Large volumes (500+ GB)
+
+Cost: $4.5/100GB/month (vs $8/100GB for gp3)
+Performance: 500 MB/s throughput, lower IOPS
+Complexity: Low
+
+Trade-off: 50% cost savings vs. lower IOPS.
+Recommendation: Use for big data, log processing, data warehouses.
+```
+
+#### Storage Type Decision Matrix
+
+| Workload Type | IOPS Needs | Throughput Needs | Recommended Storage | Cost/100GB/month | Best For |
+|---------------|------------|------------------|---------------------|------------------|----------|
+| **Dev/Test** | <3000 | <125 MB/s | gp2 or gp3 (default) | $8 | Development |
+| **General Purpose** | 3000-10000 | 125-500 MB/s | gp3 (configured) | $8 + IOPS cost | Most workloads |
+| **Database** | 10000-64000 | <1000 MB/s | io2 | $12.5 + IOPS cost | High IOPS |
+| **Big Data** | Low | >500 MB/s | st1 (HDD) | $4.5 | Sequential access |
+| **Archive** | Very Low | Low | sc1 (HDD) | $1.5 | Cold storage |
+
+### Trade-Off 5: Performance vs. Cost
+
+#### Context-Dependent Performance Investment
+
+**Startup/MVP Phase**:
+```
+Recommendation: Optimize for cost, accept moderate performance.
+
+Approach:
+- Use t3/t4g instances (burstable)
+- Single-AZ databases (no Multi-AZ)
+- Minimal caching (in-memory only)
+- Basic monitoring (CloudWatch defaults)
+- No read replicas
+- gp2/gp3 storage with defaults
+
+Cost: $100-300/month total infrastructure
+Performance: Moderate (acceptable for MVP)
+Complexity: Low
+
+Trade-off: Lower cost vs. moderate performance and availability.
+Recommendation: Focus on product validation, not performance optimization.
+
+Rationale: Premature optimization wastes time and money.
+Get to market fast, optimize when you have users and revenue.
+```
+
+**Growth Stage (Product-Market Fit)**:
+```
+Recommendation: Invest in performance for user experience.
+
+Time to invest in:
+- Compute-optimized instances (c6i)
+- Multi-AZ databases
+- ElastiCache for caching
+- Auto-scaling for traffic spikes
+- CloudFront for global users
+- Performance monitoring (X-Ray, Performance Insights)
+
+Cost: $500-2000/month
+Performance: Good (suitable for growing user base)
+Complexity: Medium
+
+Trade-off: Performance investment vs. feature development time.
+Recommendation: Allocate 10-20% of engineering time to performance.
+
+Benefit: Better user experience → higher retention → more revenue.
+ROI: 100ms latency improvement can increase conversion by 1-2%.
+```
+
+**Enterprise/Scale**:
+```
+Recommendation: Comprehensive performance optimization (REQUIRED).
+
+REQUIRED:
+- Latest-generation instances (c7g, r6g)
+- Multi-AZ everything
+- Multi-layer caching (L1 + L2)
+- Global infrastructure (multi-region)
+- Advanced monitoring and APM
+- Dedicated performance engineering team
+- Regular performance testing and optimization
+
+Cost: $5,000-50,000+/month
+Performance: Excellent (required for scale)
+Complexity: High
+
+Trade-off: None - this is required at enterprise scale.
+
+Rationale: At scale, performance directly impacts revenue.
+1% conversion improvement = $100K-1M+ annual revenue.
+```
+
+### Trade-Off 6: Performance vs. Complexity
+
+#### Context-Dependent Complexity
+
+**Simple Architecture (Low Complexity)**:
+```
+When to use:
+- Small team (1-5 people)
+- Low traffic (<100 req/s)
+- Limited operational expertise
+- Budget constraints
+
+Approach:
+- Single-region deployment
+- Monolithic application
+- Single database (no read replicas)
+- Basic caching (in-memory)
+- Simple monitoring (CloudWatch)
+
+Cost: $200-500/month
+Performance: Moderate
+Complexity: Low
+Operational Overhead: 5-10 hours/month
+
+Trade-off: Simpler operations vs. limited scalability.
+Recommendation: Start simple, add complexity as needed.
+
+Example: Small SaaS, internal tools, MVP applications.
+```
+
+**Moderate Architecture (Medium Complexity)**:
+```
+When to use:
+- Medium team (6-20 people)
+- Moderate traffic (100-1000 req/s)
+- Growing user base
+- Moderate budget
+
+Approach:
+- Single-region, multi-AZ
+- Microservices or modular monolith
+- Database with read replicas
+- ElastiCache for caching
+- CloudFront for CDN
+- Comprehensive monitoring
+
+Cost: $1,000-5,000/month
+Performance: Good
+Complexity: Medium
+Operational Overhead: 20-40 hours/month
+
+Trade-off: Better performance and scalability vs. operational complexity.
+Recommendation: Appropriate for growing businesses.
+
+Example: Growing SaaS, e-commerce, mobile app backends.
+```
+
+**Complex Architecture (High Complexity)**:
+```
+When to use:
+- Large team (20+ people)
+- High traffic (>1000 req/s)
+- Global user base
+- Enterprise requirements
+
+Approach:
+- Multi-region deployment
+- Microservices architecture
+- Distributed databases (sharding, replication)
+- Multi-layer caching (L1 + L2 + CDN)
+- Service mesh for observability
+- Advanced monitoring and APM
+- Chaos engineering
+
+Cost: $10,000-100,000+/month
+Performance: Excellent
+Complexity: High
+Operational Overhead: 100+ hours/month (dedicated team)
+
+Trade-off: Maximum performance and availability vs. significant operational complexity.
+Recommendation: Required for enterprise scale and global applications.
+
+Example: Large SaaS platforms, social media, financial services.
+```
+
+#### Complexity Decision Matrix
+
+| Team Size | Traffic Level | User Base | Recommended Complexity | Monthly Cost | Operational Hours |
+|-----------|---------------|-----------|------------------------|--------------|-------------------|
+| **1-5** | <100 req/s | Regional | Simple (single-region, monolith) | $300 | 5-10 |
+| **6-20** | 100-1000 req/s | Regional | Moderate (multi-AZ, microservices) | $2,000 | 20-40 |
+| **20-50** | >1000 req/s | Multi-region | Complex (multi-region, distributed) | $10,000 | 100+ |
+| **50+** | >10,000 req/s | Global | Very Complex (global, service mesh) | $50,000+ | 200+ |
+
+### Trade-Off 7: When Performance Optimization is Premature
+
+#### Avoid Premature Optimization
+
+**Premature Optimization Scenarios**:
+```
+DON'T optimize performance when:
+
+1. No Users Yet (MVP/Pre-Launch)
+   - You don't know actual usage patterns
+   - Optimization based on assumptions, not data
+   - Time better spent on product features
+   
+   Recommendation: Use reasonable defaults, optimize after launch.
+
+2. Low Traffic (<10 req/s)
+   - Performance is already acceptable
+   - Optimization cost exceeds benefit
+   - Simple architecture is sufficient
+   
+   Recommendation: Focus on features, not performance.
+
+3. No Performance Problems
+   - Users aren't complaining
+   - Metrics show acceptable performance
+   - No business impact from current performance
+   
+   Recommendation: "If it ain't broke, don't fix it."
+
+4. Unclear Bottlenecks
+   - No monitoring or profiling data
+   - Guessing at performance issues
+   - Optimizing the wrong thing
+   
+   Recommendation: Measure first, optimize second.
+
+5. Limited Resources
+   - Small team with limited time
+   - Performance optimization takes time from features
+   - Opportunity cost is high
+   
+   Recommendation: Optimize only critical paths.
+```
+
+**When to Optimize Performance**:
+```
+DO optimize performance when:
+
+1. User Complaints
+   - Users report slow performance
+   - High bounce rates or abandonment
+   - Direct business impact
+   
+   Action: Measure, identify bottlenecks, optimize.
+
+2. Metrics Show Issues
+   - P99 latency >1s
+   - Error rates increasing
+   - Database CPU >80%
+   
+   Action: Address specific bottlenecks.
+
+3. Scaling Issues
+   - Performance degrades with traffic
+   - Can't handle peak loads
+   - Auto-scaling not keeping up
+   
+   Action: Optimize hot paths, add caching.
+
+4. Cost Impact
+   - Over-provisioned resources
+   - High database costs
+   - Inefficient queries
+   
+   Action: Right-size, optimize queries, add caching.
+
+5. Competitive Advantage
+   - Performance is differentiator
+   - Users expect fast experience
+   - Industry standards require it
+   
+   Action: Invest in performance engineering.
+```
+
+#### Optimization Priority Framework
+
+| Scenario | Optimize? | Priority | Rationale |
+|----------|-----------|----------|-----------|
+| **MVP, no users** | No | N/A | Focus on product validation |
+| **<10 req/s, no complaints** | No | N/A | Performance is acceptable |
+| **Users complaining** | Yes | High | Direct business impact |
+| **P99 >1s** | Yes | High | Poor user experience |
+| **Database CPU >80%** | Yes | Medium | Approaching limits |
+| **High AWS costs** | Yes | Medium | Cost optimization opportunity |
+| **Competitive advantage** | Yes | Low-Medium | Strategic investment |
+
+### Decision Framework: Performance Investment
+
+Use this framework to determine appropriate performance investment:
+
+| Factor | Minimal | Standard | High Performance |
+|--------|---------|----------|------------------|
+| **Environment** | Development | Production (moderate traffic) | Production (high traffic) |
+| **Latency Target** | >1s | <100ms | <10ms |
+| **Traffic Level** | <10 req/s | 100-1000 req/s | >1000 req/s |
+| **Budget** | Tight | Moderate | Flexible |
+| **Team Size** | 1-5 people | 6-20 people | 20+ people |
+| **Instances** | t3 (burstable) | m6i (general purpose) | c6i/c7g (compute-optimized) |
+| **Caching** | None or in-memory | ElastiCache (t4g.small) | Multi-layer + DAX |
+| **Database** | db.t3.micro, single-AZ | db.t3.medium, Multi-AZ | db.r6g.large+, replicas |
+| **Storage** | gp2 default | gp3 configured | io2 high IOPS |
+| **Monitoring** | CloudWatch basic | CloudWatch + alarms | X-Ray + Performance Insights |
+| **Monthly Cost** | $50-200 | $500-2,000 | $5,000-50,000+ |
+| **Complexity** | Low | Medium | High |
+
+### Key Takeaways for Context-Aware Performance
+
+1. **Latency Requirements Drive Decisions**: <10ms requires premium solutions, >100ms allows cost optimization
+2. **Traffic Level Matters**: Different approaches for 10 req/s vs 10,000 req/s
+3. **Environment Dictates Investment**: Dev/test can use cheaper options than production
+4. **Caching is High ROI**: $15/month cache can save $100+/month in database costs
+5. **Start Simple, Scale Up**: Don't over-engineer for traffic you don't have yet
+6. **Measure Before Optimizing**: Use data to identify bottlenecks, not assumptions
+7. **Balance Cost and Performance**: Not every workload needs ultra-low latency
+8. **Consider Operational Complexity**: More performance often means more operational overhead
+9. **Avoid Premature Optimization**: Focus on product validation before performance tuning
+10. **Performance is Iterative**: Continuously monitor and optimize as you grow
+
+### Anti-Patterns to Avoid
+
+❌ **Over-Engineering for MVP**: Spending months on multi-region, multi-layer caching before launch
+❌ **Ignoring Latency Requirements**: Using t3 instances for <10ms latency requirements
+❌ **No Caching at Scale**: Hitting database directly with >100 req/s
+❌ **Wrong Instance Type**: Using general-purpose instances for CPU-intensive workloads
+❌ **Premature Optimization**: Optimizing before measuring actual performance
+❌ **One-Size-Fits-All**: Same performance approach for dev and production
+❌ **Ignoring Cost**: Implementing expensive solutions without considering budget
+❌ **No Monitoring**: Optimizing blind without metrics and profiling data
+
+✅ **Measure First**: Use CloudWatch, X-Ray, Performance Insights to identify bottlenecks
+✅ **Start Simple**: Use reasonable defaults, optimize based on actual usage
+✅ **Context-Aware**: Different approaches for different latency/traffic/budget requirements
+✅ **Iterative Optimization**: Continuously improve as you grow
+✅ **Cost-Conscious**: Balance performance investment with business value
+✅ **Right-Size**: Match resources to actual needs, not theoretical maximums
+✅ **Cache Strategically**: Add caching where it provides highest ROI
+✅ **Monitor Continuously**: Track performance metrics and set up alarms
+
+## Summary
+
+The Performance Efficiency Pillar is about using computing resources efficiently to meet requirements and maintaining that efficiency as demand changes. By following the guidance in this document, you can:
+
+- **Select the right resources** based on workload characteristics and requirements
+- **Implement caching** at appropriate layers to reduce latency and cost
+- **Monitor performance** continuously to identify bottlenecks and optimization opportunities
+- **Make informed trade-offs** between performance, cost, and complexity based on context
+- **Optimize iteratively** as your application grows and requirements evolve
+- **Avoid premature optimization** by measuring first and optimizing based on data
+- **Balance performance investment** with business value and operational capacity
+
+Remember: Performance optimization is not one-size-fits-all. The right approach depends on your specific latency requirements, traffic levels, budget constraints, and operational capacity. Use the context questions and decision matrices in this guide to make informed trade-offs that align with your business goals.
+
+Start with reasonable defaults, measure actual performance, and optimize based on data - not assumptions. As your application grows, continuously monitor and refine your performance strategy to maintain efficiency at scale.
+
+
+---
+
+## Mode-Aware Guidance for Performance Efficiency Reviews
+
+This section guides Kiro on how to adapt Performance Efficiency Pillar reviews based on the current review mode (Simple, Context-Aware, or Full Analysis). Each mode provides different levels of detail and analysis appropriate for different use cases.
+
+### Simple Mode - Performance Efficiency Reviews
+
+**When to Use:** CI/CD pipelines, quick checks, development environment reviews, pre-commit hooks
+
+**Token Budget:** 17-25K tokens | **Target Latency:** 2.5-6 seconds
+
+**What to Include in Simple Mode:**
+
+1. **Direct Violation Identification**
+   - Flag clear performance violations without context gathering
+   - Use prescriptive language: "Enable caching", "Use connection pooling", "Right-size instance"
+   - Assign risk levels based on standard criteria
+   - Provide specific line numbers and file references
+
+2. **Prescriptive Recommendations**
+   - Give direct remediation steps without trade-off discussion
+   - Use code examples showing the fix
+   - Focus on Well-Architected best practices without customization
+   - No context questions about latency requirements, throughput targets, or traffic patterns
+
+3. **Standard Risk Assessment**
+   - High Risk: No caching for read-heavy workloads, synchronous operations that should be async, inefficient database queries
+   - Medium Risk: Oversized instances, missing connection pooling, no CDN for static content
+   - Low Risk: Suboptimal configurations, missing performance monitoring, minor improvements
+
+4. **Output Format**
+   ```
+   ❌ HIGH RISK: No caching configured for read-heavy DynamoDB table
+   Location: dynamodb.tf:23
+   Issue: Missing DAX cluster for caching
+   Recommendation: Add DAX cluster to reduce read latency and cost
+   Remediation:
+   [Code example showing the fix]
+   ```
+
+**What to EXCLUDE in Simple Mode:**
+- ❌ Context questions (latency requirements, throughput targets, traffic patterns)
+- ❌ Trade-off discussions (cost vs. performance, complexity vs. speed)
+- ❌ Alternative approaches with pros/cons
+- ❌ Decision matrices or scenario matching
+- ❌ Conditional guidance based on context
+- ❌ Long explanations of performance optimization strategies
+
+**Example Simple Mode Output:**
+```
+Performance Efficiency Review Results (Simple Mode)
+
+❌ HIGH RISK: Lambda function lacks connection pooling
+Location: lambda.py:15
+Recommendation: Implement connection pooling for database connections
+Remediation: Use connection pooling library to reuse connections across invocations
+
+⚠️ MEDIUM RISK: EC2 instance oversized for workload
+Location: compute.tf:34
+Recommendation: Right-size to t3.medium (currently t3.xlarge)
+Remediation: Reduce instance size to match actual CPU/memory usage
+
+⚠️ MEDIUM RISK: No CDN configured for static content
+Location: s3.tf:12
+Recommendation: Add CloudFront distribution for S3 bucket
+Remediation: Configure CloudFront to cache static assets
+
+✓ 3 issues found: 1 high-risk, 2 medium-risk
+```
+
+### Context-Aware Mode - Performance Efficiency Reviews
+
+**When to Use:** Interactive sessions, production reviews, staging reviews, architecture decisions
+
+**Token Budget:** 35-50K tokens | **Target Latency:** 4-8 seconds
+
+**What to Include in Context-Aware Mode:**
+
+1. **Context Gathering (3-5 Key Questions)**
+   - "What environment is this? (development/staging/production)"
+   - "What's your latency requirement? (target response time in ms)"
+   - "What's your throughput requirement? (requests per second)"
+   - "What's your traffic pattern? (steady/variable/spiky)"
+   - "What's your budget constraint? (tight/moderate/flexible)"
+
+2. **Conditional Recommendations Based on Context**
+   - Provide different guidance for dev vs. production
+   - Adjust performance recommendations based on latency requirements
+   - Explain when caching is required vs. optional
+   - Consider budget constraints in recommendations
+
+3. **Trade-Off Explanations for Key Decisions**
+   - Explain performance vs. cost trade-offs (e.g., caching reduces cost but adds complexity)
+   - Discuss performance vs. consistency trade-offs (e.g., eventual consistency for speed)
+   - Provide cost estimates for performance improvements
+   - Explain when to defer performance optimizations vs. implement immediately
+
+4. **Alternative Approaches with Pros/Cons**
+   - Present multiple valid performance approaches
+   - Explain when each approach is appropriate
+   - Provide decision criteria for choosing between options
+
+5. **Output Format**
+   ```
+   ⚠️ CONTEXT-DEPENDENT: No caching configured for DynamoDB table
+   Location: dynamodb.tf:23
+   
+   Context Questions:
+   - What's your read:write ratio? (read-heavy/balanced/write-heavy)
+   - What's your latency requirement? (target response time)
+   - What's your budget constraint?
+   
+   Conditional Guidance:
+   - FOR read-heavy workload (80%+ reads) with <10ms latency requirement:
+     DAX caching is REQUIRED
+     - Latency: 20ms → <1ms (20x improvement)
+     - Cost: +$0.25/hour per node (~$180/month for 1 node)
+     - Throughput: 10x increase in read capacity
+   
+   - FOR balanced workload or relaxed latency: DAX is OPTIONAL
+     - Cost savings: $180/month
+     - Trade-off: Higher latency (20ms vs. <1ms)
+   
+   Recommendation: Based on your workload pattern, choose appropriate caching strategy.
+   ```
+
+**What to INCLUDE in Context-Aware Mode:**
+- ✅ Context questions (3-5 key questions about latency, throughput, traffic patterns)
+- ✅ Conditional recommendations based on gathered context
+- ✅ Trade-off explanations for major performance decisions
+- ✅ Cost-benefit analysis for key recommendations
+- ✅ Alternative approaches with use cases
+- ✅ Environment-specific guidance (dev/staging/prod)
+- ✅ Latency and throughput requirement explanations
+
+**What to EXCLUDE in Context-Aware Mode:**
+- ❌ Comprehensive decision matrices (save for Full Analysis)
+- ❌ Detailed quantitative cost analysis (save for Full Analysis)
+- ❌ Scenario matching with examples (save for Full Analysis)
+- ❌ Multi-pillar impact analysis (save for Full Analysis)
+- ❌ Long-term strategic implications (save for Full Analysis)
+
+**Example Context-Aware Mode Output:**
+```
+Performance Efficiency Review Results (Context-Aware Mode)
+
+Context Gathered:
+- Environment: Production
+- Latency Requirement: <100ms p99
+- Throughput: 1000 req/sec peak
+- Traffic Pattern: Variable (2x peak vs. average)
+- Budget: Moderate ($5K/month infrastructure)
+
+⚠️ CONTEXT-DEPENDENT: No caching configured for API responses
+Location: api.py:45
+
+Context Analysis:
+- Production API with 100ms latency requirement
+- Read-heavy workload (80% reads, 20% writes)
+- Variable traffic pattern requires scalable caching
+
+Recommendation: Implement ElastiCache Redis for API caching
+
+Trade-Offs:
+- Cost: $50-100/month for cache cluster
+- Latency: 50ms → 5ms (10x improvement)
+- Throughput: 3x increase in request capacity
+- Complexity: Medium (cache invalidation strategy needed)
+
+Alternative Approaches:
+1. No caching: Simple but slow (50ms latency)
+2. Application-level caching: Free but not scalable
+3. ElastiCache Redis: RECOMMENDED - scalable and fast
+4. CloudFront: Good for static content, not dynamic APIs
+
+Decision: Use ElastiCache Redis (option 3) for scalable API caching.
+
+Cost-Benefit: $75/month cost enables 3x throughput increase.
+Avoids need for 3x compute capacity ($300/month savings).
+Net benefit: $225/month positive ROI.
+
+⚠️ CONTEXT-DEPENDENT: Lambda function uses synchronous invocation
+Location: lambda.py:23
+
+Context Analysis:
+- Variable traffic pattern (2x peak)
+- Non-critical background processing task
+
+Conditional Guidance:
+- FOR critical path operations: Synchronous is REQUIRED
+  - Ensures completion before returning to user
+  - Acceptable latency impact for critical operations
+
+- FOR background tasks: Asynchronous is RECOMMENDED
+  - Reduces API latency by 50-80%
+  - Improves user experience
+  - Handles traffic spikes better
+
+Recommendation: Convert to asynchronous invocation for background tasks.
+
+Trade-Off: Immediate consistency vs. better performance
+- Synchronous: Guaranteed completion, higher latency
+- Asynchronous: Better performance, eventual consistency
+
+Cost-Benefit: $0 cost, 50-80% latency reduction, better scalability.
+
+✓ 2 issues found: Both recommended for 100ms latency requirement
+```
+
+### Full Analysis Mode - Performance Efficiency Reviews
+
+**When to Use:** Major architecture decisions, explicit user request, complex trade-off scenarios, performance optimization planning
+
+**Token Budget:** 70-95K tokens | **Target Latency:** 5-10 seconds
+
+**What to Include in Full Analysis Mode:**
+
+1. **Comprehensive Context Gathering**
+   - All context questions from Context-Aware Mode
+   - Additional questions about growth expectations, global distribution needs
+   - Performance testing results and bottleneck analysis
+   - Current performance metrics (p50, p95, p99 latency)
+   - Cost per request and efficiency metrics
+
+2. **Detailed Trade-Off Analysis Across All Pillars**
+   - Performance vs. Cost with quantitative estimates
+   - Performance vs. Consistency (CAP theorem trade-offs)
+   - Performance vs. Operational Complexity
+   - Multi-pillar impact analysis
+
+3. **Decision Matrices Comparing Multiple Options**
+   - Load and present decision matrices for major performance decisions
+   - Compare 3-5 options with scoring across multiple criteria
+   - Include quantitative cost estimates and performance benchmarks
+   - Provide weighted recommendations based on latency requirements
+
+4. **Scenario Matching with Examples**
+   - Match user's latency requirements to common scenarios (<10ms, <100ms, <1s)
+   - Provide examples of architectures for each performance tier
+   - Include lessons learned and common performance pitfalls
+   - Reference industry benchmarks and standards
+
+5. **Quantitative Cost-Benefit Analysis**
+   - Detailed cost breakdowns (monthly, annual, 3-year)
+   - Performance improvement calculations (latency reduction, throughput increase)
+   - ROI calculations for performance investments
+   - Break-even analysis (when does performance investment pay off)
+
+6. **Long-Term Implications and Roadmap**
+   - Discuss how performance decisions impact future scalability
+   - Provide migration paths from current to ideal state
+   - Explain technical debt implications of performance shortcuts
+   - Suggest phased implementation approaches
+
+7. **Output Format**
+   ```
+   🔍 COMPREHENSIVE ANALYSIS: API Caching Strategy
+   Location: api.py:45
+   
+   Context Gathered:
+   - Environment: Production
+   - Latency Requirement: <100ms p99 (currently 150ms p99)
+   - Throughput: 1000 req/sec peak, 500 req/sec average
+   - Traffic Pattern: Variable (2x peak, daily spikes)
+   - Budget: Moderate ($5K/month, can increase for performance)
+   - Growth: 3x expected in 12 months
+   - Read:Write Ratio: 80:20 (read-heavy)
+   - Current Cost: $300/month compute
+   
+   Decision Matrix: Caching Options
+   
+   | Option | Latency | Throughput | Cost | Complexity | Best For |
+   |--------|---------|------------|------|------------|----------|
+   | No Cache | 150ms | 1K req/s | $ | ⭐⭐⭐⭐⭐ | Dev/Test |
+   | App Cache | 50ms | 2K req/s | $ | ⭐⭐⭐⭐ | Small scale |
+   | ElastiCache | 10ms | 5K req/s | $$ | ⭐⭐⭐ | Production |
+   | CloudFront | 5ms | 10K req/s | $$$ | ⭐⭐ | Global CDN |
+   
+   Recommended: ElastiCache Redis
+   
+   Pillar Impact Analysis:
+   ✅ Performance: +HIGH
+      - Latency: 150ms → 10ms p99 (15x improvement)
+      - Throughput: 1K → 5K req/s (5x increase)
+      - Meets <100ms latency requirement with buffer
+      - Handles 3x growth without additional compute
+   
+   ⚠️ Cost: +LOW
+      - ElastiCache: $75/month (cache.t3.medium)
+      - Compute savings: $200/month (avoid 3x scale-up)
+      - Net cost: -$125/month (saves money)
+   
+   ⚠️ Reliability: +MEDIUM
+      - Multi-AZ cache for high availability
+      - Reduces database load (less likely to overwhelm DB)
+      - Cache failures degrade to slower performance (not outage)
+   
+   ⚠️ Operational Excellence: +MEDIUM
+      - Requires cache invalidation strategy
+      - Monitoring for cache hit rate
+      - Automated failover with Multi-AZ
+   
+   ⚠️ Security: NEUTRAL
+      - Encryption in transit and at rest
+      - VPC security groups for access control
+      - Same security posture as database
+   
+   Cost-Benefit Analysis:
+   - ElastiCache Cost: $75/month
+   - Compute Savings: $200/month (avoid 3x scale-up)
+   - Net Savings: $125/month ($1,500/year)
+   - Performance Improvement: 15x latency reduction
+   - Throughput Increase: 5x capacity increase
+   - ROI: Immediate positive (saves money while improving performance)
+   
+   Trade-Off Scenarios:
+   
+   1. Startup with Tight Budget, <1s Latency OK:
+      - Start with application-level caching
+      - Use simple in-memory cache (free)
+      - Migrate to ElastiCache when traffic grows
+      - Cost: $0
+      - Trade-off: Limited scalability, 50ms latency
+   
+   2. Growth Stage with <100ms Latency (YOUR SITUATION):
+      - Implement ElastiCache Redis immediately
+      - Multi-AZ for high availability
+      - Monitor cache hit rate and tune TTLs
+      - Cost: $75/month (net savings of $125/month)
+      - Benefit: Meets latency requirement, handles growth
+   
+   3. Enterprise with <10ms Latency, Global Users:
+      - Use CloudFront + ElastiCache
+      - Edge caching for global distribution
+      - Regional ElastiCache clusters
+      - Cost: $300-500/month
+      - Benefit: <10ms latency globally, massive scale
+   
+   Decision: IMPLEMENT ElastiCache Redis (Option 2)
+   
+   Rationale:
+   - Current 150ms p99 latency exceeds 100ms requirement
+   - 3x growth expected requires 5x throughput capacity
+   - Positive ROI: Saves $125/month while improving performance
+   - Scalability: Handles 3x growth without compute scale-up
+   - User experience: 15x latency improvement
+   
+   Implementation Roadmap:
+   
+   Phase 1 (Week 1): Deploy ElastiCache cluster
+   - Create cache.t3.medium Multi-AZ cluster
+   - Configure VPC security groups
+   - Test cache connectivity from application
+   - Estimated time: 4 hours
+   
+   Phase 2 (Week 2): Implement caching layer
+   - Add Redis client library to application
+      - Implement cache-aside pattern
+      - Set appropriate TTLs (5-60 minutes based on data freshness)
+      - Add cache invalidation on writes
+      - Estimated time: 8 hours
+   
+   Phase 3 (Week 3): Monitor and optimize
+      - Set up CloudWatch metrics for cache hit rate
+      - Configure alarms for cache failures
+      - Tune TTLs based on hit rate
+      - Load test to verify performance improvement
+      - Estimated time: 4 hours
+   
+   Total Implementation: 16 hours over 3 weeks
+   Total Cost: $75/month (net savings of $125/month)
+   
+   Risk of NOT Implementing:
+   - Latency SLA violation: 150ms vs. 100ms requirement
+   - Scalability blocker: Cannot handle 3x growth without 3x compute cost
+   - User experience: Slow API responses damage retention
+   - Cost: $200/month additional compute needed for growth
+   
+   Risk of Implementing:
+   - Minimal: $75/month cost (offset by $200/month savings)
+   - Cache invalidation complexity (mitigated by cache-aside pattern)
+   - 16 hours engineering time
+   
+   Conclusion: The decision is clear - implement ElastiCache immediately.
+   Positive ROI ($125/month net savings), meets latency requirement, enables growth.
+   ```
+
+**What to INCLUDE in Full Analysis Mode:**
+- ✅ Comprehensive context gathering (10+ questions including current metrics)
+- ✅ Detailed trade-off analysis across all pillars
+- ✅ Decision matrices with 3-5 options compared
+- ✅ Quantitative cost-benefit analysis with performance benchmarks
+- ✅ Scenario matching (startup/growth/enterprise with different latency requirements)
+- ✅ Long-term implications and technical debt discussion
+- ✅ Phased implementation roadmap
+- ✅ Risk analysis (risk of implementing vs. not implementing)
+- ✅ Multi-pillar impact analysis
+- ✅ Industry benchmarks and performance standards
+- ✅ ROI and payback period calculations
+
+**What to EXCLUDE in Full Analysis Mode:**
+- Nothing - Full Analysis Mode includes everything
+
+### Mode Selection for Performance Efficiency Reviews
+
+**Automatic Mode Detection:**
+
+1. **Simple Mode Triggers:**
+   - CI/CD environment (CI=true)
+   - File path contains `/dev/` or `-dev.`
+   - User requests "quick review" or "fast check"
+   - Pre-commit hook execution
+
+2. **Context-Aware Mode Triggers:**
+   - File path contains `/prod/` or `/staging/`
+   - Interactive session (user can answer questions)
+   - User requests "review with context"
+   - Default for most interactive reviews
+
+3. **Full Analysis Mode Triggers:**
+   - User explicitly requests "full analysis" or "comprehensive review"
+   - User asks "compare options" or "trade-off analysis"
+   - Major architecture decision context
+   - Performance optimization planning
+
+**Mode Switching Mid-Session:**
+
+Users can escalate or simplify modes during a review:
+
+- **Escalate:** "Can you explain the trade-offs?" → Switch to Context-Aware
+- **Escalate:** "I need a full analysis with cost comparison" → Switch to Full Analysis
+- **Simplify:** "Just tell me what's wrong" → Switch to Simple
+
+When switching modes, preserve all context already gathered (don't re-ask questions).
+
+### Best Practices for Mode-Aware Performance Efficiency Reviews
+
+**For Simple Mode:**
+- Focus on clear violations only
+- Use prescriptive language without explanation
+- Keep output concise and actionable
+- Provide code examples for fixes
+- Don't ask context questions about latency or throughput
+
+**For Context-Aware Mode:**
+- Ask 3-5 key context questions upfront (latency, throughput, traffic pattern)
+- Provide conditional guidance based on context
+- Explain trade-offs for major decisions
+- Offer 2-3 alternative approaches
+- Include cost estimates and performance impact
+
+**For Full Analysis Mode:**
+- Gather comprehensive context (10+ questions including current metrics)
+- Load relevant decision matrices
+- Provide quantitative cost-benefit analysis with ROI
+- Include scenario matching and examples
+- Discuss long-term implications
+- Provide phased implementation roadmap
+
+### Common Performance Efficiency Review Scenarios by Mode
+
+**Scenario 1: No Caching**
+
+- **Simple Mode:** "❌ HIGH RISK: Add caching. Implement ElastiCache Redis for read-heavy workload."
+- **Context-Aware Mode:** "⚠️ CONTEXT-DEPENDENT: For read-heavy workload (80%+ reads) with <100ms latency, caching is REQUIRED. For balanced workload, optional."
+- **Full Analysis Mode:** "🔍 COMPREHENSIVE ANALYSIS: [Decision matrix comparing no cache, app cache, ElastiCache, CloudFront with latency, cost, and throughput]"
+
+**Scenario 2: Oversized Instance**
+
+- **Simple Mode:** "⚠️ MEDIUM RISK: Right-size instance. Change from t3.xlarge to t3.medium based on CPU usage."
+- **Context-Aware Mode:** "⚠️ CONTEXT-DEPENDENT: For steady 20% CPU usage, t3.medium is sufficient ($50/month savings). For variable traffic, keep t3.xlarge with auto-scaling."
+- **Full Analysis Mode:** "🔍 COMPREHENSIVE ANALYSIS: [Decision matrix comparing instance types with cost, performance, and auto-scaling strategies]"
+
+**Scenario 3: Synchronous Operations**
+
+- **Simple Mode:** "⚠️ MEDIUM RISK: Use asynchronous invocation for background tasks."
+- **Context-Aware Mode:** "⚠️ CONTEXT-DEPENDENT: For critical path operations, synchronous is REQUIRED. For background tasks, asynchronous reduces latency by 50-80%."
+- **Full Analysis Mode:** "🔍 COMPREHENSIVE ANALYSIS: [Decision matrix comparing synchronous, asynchronous, and event-driven patterns with latency, consistency, and complexity trade-offs]"
+
+### Summary
+
+Mode-aware performance efficiency reviews ensure that Kiro provides the right level of detail for each situation:
+
+- **Simple Mode:** Fast, prescriptive, no context - perfect for CI/CD and quick checks
+- **Context-Aware Mode:** Balanced, conditional, with context - ideal for interactive production reviews
+- **Full Analysis Mode:** Comprehensive, detailed, with matrices - best for major architecture decisions and performance optimization planning
+
+Always announce the mode at the start of a review and allow users to switch modes if they need more or less detail. Preserve context when switching modes to avoid re-asking questions.

@@ -6,12 +6,281 @@ This steering file guides Kiro on automatically applying Well-Architected Framew
 
 ### Core Principles for Code Generation
 
-1. **Security by Default**: Always generate code with encryption, least privilege IAM, and secure network configurations
-2. **Reliability First**: Include multi-AZ deployments, backup configurations, and fault tolerance patterns
-3. **Performance Aware**: Use appropriate instance sizing, caching strategies, and efficient resource configurations
-4. **Cost Optimized**: Implement right-sizing, auto-scaling, and cost-effective resource choices
-5. **Well Documented**: Add inline comments explaining Well-Architected decisions and trade-offs
-6. **Production Ready**: Generate code that's ready for production use, not just proof-of-concept
+1. **Context-Aware**: Ask about environment (dev/staging/prod), SLA, budget, and data classification before generating code
+2. **Security by Default**: Always generate code with encryption, least privilege IAM, and secure network configurations
+3. **Reliability First**: Include multi-AZ deployments, backup configurations, and fault tolerance patterns (context-dependent)
+4. **Performance Aware**: Use appropriate instance sizing, caching strategies, and efficient resource configurations
+5. **Cost Optimized**: Implement right-sizing, auto-scaling, and cost-effective resource choices based on context
+6. **Well Documented**: Add inline comments explaining Well-Architected decisions and trade-offs
+7. **Production Ready**: Generate code that's ready for the target environment, with appropriate trade-offs explained
+
+## Context-Aware Code Generation
+
+### Gathering Context Before Generation
+
+Before generating infrastructure code, gather context to provide appropriate recommendations:
+
+**Essential Context Questions:**
+1. **Environment**: "What environment is this for? (development, staging, production)"
+2. **SLA Requirements**: "Do you have specific availability requirements?" (if production)
+3. **Budget**: "What's your budget sensitivity? (tight, moderate, flexible)"
+4. **Data Classification**: "Will this handle sensitive data (PII, financial, health)?"
+5. **Performance**: "Do you have specific latency or throughput requirements?"
+
+**Example Context Gathering:**
+```
+User: "Generate Terraform code for an RDS database"
+
+Kiro: "I'll generate that for you. First, let me gather some context:
+- What environment is this for? (development, staging, production)
+- Will this handle sensitive data?
+- Do you have specific availability requirements?
+
+This will help me generate code with appropriate configurations and trade-offs."
+```
+
+### Environment-Specific Code Generation
+
+#### Development Environment
+
+**Characteristics:**
+- Cost optimization prioritized
+- Simplicity over redundancy
+- Acceptable downtime
+- No sensitive data (usually)
+
+**Code Generation Adjustments:**
+- Single-AZ deployments
+- Smaller instance sizes (t4g family)
+- Basic monitoring
+- AWS-managed encryption keys
+- Shorter backup retention (7 days)
+- Can stop instances outside business hours
+
+**Example: Development RDS**
+```hcl
+# Terraform - Development RDS Database
+resource "aws_db_instance" "dev_database" {
+  identifier = "app-dev-db"
+  engine     = "postgres"
+  engine_version = "15.4"
+  
+  # Development: Use smaller instance for cost savings
+  instance_class = "db.t4g.medium"  # $60/month vs $365/month for production
+  
+  # Development: Single-AZ acceptable (save 50% cost)
+  multi_az = false  # Trade-off: Cost savings vs. availability
+  
+  allocated_storage = 20  # Start small for dev
+  storage_encrypted = true
+  
+  # Development: AWS-managed keys sufficient
+  # kms_key_id not specified - uses AWS-managed key (free)
+  
+  # Development: Shorter backup retention
+  backup_retention_period = 7  # vs 30 days for production
+  
+  # Development: Can delete without protection
+  deletion_protection = false
+  
+  # Development: Basic monitoring
+  enabled_cloudwatch_logs_exports = ["postgresql"]
+  
+  # Trade-off Explanation:
+  # - Single-AZ saves $60/month but means 1-2 hour recovery time if AZ fails
+  # - Smaller instance saves $305/month but may be slower under load
+  # - Acceptable for development where cost > availability
+}
+```
+
+#### Production Environment
+
+**Characteristics:**
+- Reliability and security prioritized
+- High availability required
+- Sensitive data handling
+- Comprehensive monitoring
+
+**Code Generation Adjustments:**
+- Multi-AZ deployments
+- Appropriate instance sizing
+- Comprehensive monitoring
+- Customer-managed encryption keys (KMS CMK)
+- Longer backup retention (30+ days)
+- Deletion protection enabled
+
+**Example: Production RDS**
+```hcl
+# Terraform - Production RDS Database
+resource "aws_db_instance" "prod_database" {
+  identifier = "app-prod-db"
+  engine     = "postgres"
+  engine_version = "15.4"
+  
+  # Production: Appropriate sizing for load
+  instance_class = "db.r6g.large"  # $365/month - memory-optimized
+  
+  # Production: Multi-AZ REQUIRED for 99.95% availability
+  multi_az = true  # Trade-off: 2x cost for automatic failover
+  
+  allocated_storage = 100
+  storage_encrypted = true
+  
+  # Production: Customer-managed KMS key for audit trail
+  kms_key_id = aws_kms_key.database.arn  # +$1/month for key
+  
+  # Production: Extended backup retention for compliance
+  backup_retention_period = 30  # 30-day retention
+  
+  # Production: Protect against accidental deletion
+  deletion_protection = true
+  
+  # Production: Comprehensive monitoring
+  enabled_cloudwatch_logs_exports = ["postgresql", "upgrade"]
+  monitoring_interval = 60  # Enhanced monitoring
+  monitoring_role_arn = aws_iam_role.rds_monitoring.arn
+  
+  # Production: Performance Insights for query analysis
+  performance_insights_enabled = true
+  performance_insights_retention_period = 7
+  
+  # Trade-off Explanation:
+  # - Multi-AZ doubles cost ($365 → $730/month) but provides:
+  #   * 99.95% availability vs 99% (4.4 hours vs 3.65 days downtime/year)
+  #   * Automatic failover in 60-120 seconds
+  #   * Required for production SLA commitments
+  # - Customer-managed KMS key adds $1/month but provides:
+  #   * Full audit trail of key usage
+  #   * Compliance with GDPR, HIPAA, PCI-DSS
+  #   * Custom key rotation policies
+}
+
+# KMS key for production database encryption
+resource "aws_kms_key" "database" {
+  description = "Encryption key for production database"
+  
+  # Production: Enable automatic key rotation
+  enable_key_rotation = true
+  
+  # Production: Prevent accidental deletion
+  deletion_window_in_days = 30
+}
+```
+
+#### Staging Environment
+
+**Characteristics:**
+- Production-like for testing
+- Balance cost and reliability
+- Test failover scenarios
+- Similar security to production
+
+**Code Generation Adjustments:**
+- Multi-AZ recommended (test failover)
+- Smaller than production but production-like
+- Production-like monitoring
+- Customer-managed keys (match production)
+- Moderate backup retention (14 days)
+
+**Example: Staging RDS**
+```hcl
+# Terraform - Staging RDS Database
+resource "aws_db_instance" "staging_database" {
+  identifier = "app-staging-db"
+  engine     = "postgres"
+  engine_version = "15.4"
+  
+  # Staging: Smaller than production but production-like
+  instance_class = "db.t4g.large"  # $120/month - between dev and prod
+  
+  # Staging: Multi-AZ recommended to test failover scenarios
+  multi_az = true  # Test production-like behavior
+  
+  allocated_storage = 50  # Smaller than production
+  storage_encrypted = true
+  
+  # Staging: Match production encryption for testing
+  kms_key_id = aws_kms_key.database.arn
+  
+  # Staging: Moderate backup retention
+  backup_retention_period = 14  # Between dev (7) and prod (30)
+  
+  # Staging: Can delete if needed
+  deletion_protection = false
+  
+  # Staging: Production-like monitoring
+  enabled_cloudwatch_logs_exports = ["postgresql", "upgrade"]
+  monitoring_interval = 60
+  monitoring_role_arn = aws_iam_role.rds_monitoring.arn
+  
+  # Trade-off Explanation:
+  # - Multi-AZ in staging costs 2x ($120 → $240/month) but:
+  #   * Allows testing failover procedures
+  #   * Validates production-like behavior
+  #   * Catches issues before production deployment
+  # - Smaller instance than production saves $125/month
+  # - Balance between cost-effective and production-representative
+}
+```
+
+### Trade-Off Explanations in Generated Code
+
+**Always Include Trade-Off Comments:**
+
+```hcl
+# Good: Explains the trade-off
+multi_az = true  # Trade-off: 2x cost ($120 → $240/month) for 99.95% availability and automatic failover
+
+# Good: Explains when to use
+instance_class = "db.t4g.medium"  # Development: Cost-optimized ($60/month), acceptable for non-production
+
+# Good: Explains the benefit
+kms_key_id = aws_kms_key.database.arn  # Production: Required for PII/PHI, provides audit trail (+$1/month)
+
+# Bad: No explanation
+multi_az = true
+
+# Bad: Vague explanation
+multi_az = true  # Enable Multi-AZ
+```
+
+### Conditional Code Generation Based on Context
+
+**Example: Context-Driven Generation**
+
+```
+User: "Generate Terraform for an RDS database"
+Kiro: "What environment? (dev/staging/prod)"
+User: "Production with 99.9% SLA, handling PII"
+
+Kiro generates:
+- Multi-AZ: REQUIRED (for 99.9% SLA)
+- KMS CMK: REQUIRED (for PII compliance)
+- Instance: db.r6g.large (appropriate for production)
+- Backups: 30-day retention (compliance)
+- Monitoring: Comprehensive (production observability)
+- Deletion Protection: Enabled (prevent accidents)
+
+All with inline comments explaining trade-offs and requirements.
+```
+
+**Example: Different Context**
+
+```
+User: "Generate Terraform for an RDS database"
+Kiro: "What environment? (dev/staging/prod)"
+User: "Development, no sensitive data"
+
+Kiro generates:
+- Single-AZ: ACCEPTABLE (cost savings for dev)
+- AWS-managed encryption: SUFFICIENT (no compliance needs)
+- Instance: db.t4g.medium (cost-optimized for dev)
+- Backups: 7-day retention (adequate for dev)
+- Monitoring: Basic (CloudWatch logs only)
+- Deletion Protection: Disabled (easier cleanup)
+
+All with inline comments explaining cost savings and trade-offs.
+```
 
 ## Security Best Practices for Code Generation
 

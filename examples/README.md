@@ -4,32 +4,83 @@ This directory contains comprehensive examples demonstrating the AWS Well-Archit
 
 ## What's Included
 
+- **Mode Selection Examples**: Comprehensive examples demonstrating Simple, Context-Aware, and Full Analysis modes
 - **Learning Mode Examples**: Detailed educational examples with explanations, real-world scenarios, anti-patterns, and quizzes
 - **IaC Analysis Examples**: Infrastructure as Code files with common Well-Architected issues and their remediation
 - **Review Workflow Examples**: Complete review sessions and reports demonstrating the guided review process
+- **Trade-Off Scenarios**: Examples of context-aware trade-off analysis and decision-making
+- **Decision Matrices**: Examples of decision matrices for comparing architecture options
 
 These examples are useful for:
 
+- Understanding the three review modes and when to use each
 - Learning AWS Well-Architected best practices in depth
 - Testing the AWS Well-Architected Power
 - Learning about common architecture anti-patterns
 - Understanding the guided review workflow
 - Understanding how to fix Well-Architected issues
+- Making context-aware architecture decisions with trade-off analysis
 - Training and documentation purposes
 
 ## Directory Structure
 
 ```
 examples/
-├── learning/          # Learning mode examples with detailed explanations
-├── terraform/         # Terraform examples (Security Pillar)
-├── cloudformation/    # CloudFormation examples (Reliability Pillar)
-├── cdk/              # AWS CDK examples (Cost Optimization Pillar)
-├── reviews/          # Review workflow examples and reports
-└── README.md         # This file
+├── mode-selection-examples.md  # Review mode examples and comparisons
+├── trade-off-scenarios.md      # Context-aware trade-off examples
+├── decision-matrices.md        # Decision matrix examples
+├── learning/                   # Learning mode examples with detailed explanations
+├── terraform/                  # Terraform examples (Security Pillar)
+├── cloudformation/             # CloudFormation examples (Reliability Pillar)
+├── cdk/                       # AWS CDK examples (Cost Optimization Pillar)
+├── application-code/          # Application code examples
+├── reviews/                   # Review workflow examples and reports
+└── README.md                  # This file
 ```
 
 ## Examples Overview
+
+### Mode Selection Examples
+
+**mode-selection-examples.md** - Comprehensive demonstration of the three review modes:
+- **Simple Mode**: Fast prescriptive guidance for quick checks and CI/CD
+- **Context-Aware Mode**: Conditional recommendations based on system context
+- **Full Analysis Mode**: Comprehensive analysis with decision matrices and ROI
+- **Automatic Mode Detection**: Examples of file path and CI/CD detection
+- **Explicit Mode Overrides**: How to request specific modes
+- **Mode Switching**: Mid-session mode changes with context preservation
+- **Expected Outputs**: Side-by-side comparison of same issue across all modes
+
+Each mode example includes:
+- Real infrastructure code scenarios
+- Complete output examples showing different analysis depths
+- Performance characteristics (latency, token consumption, cost)
+- When to use each mode
+- Cost optimization strategies
+
+See [mode-selection-examples.md](mode-selection-examples.md) for the complete guide.
+
+### Trade-Off Scenarios
+
+**trade-off-scenarios.md** - Context-aware decision-making examples:
+- Multi-AZ vs Single-AZ trade-offs for different contexts
+- Storage class selection based on access patterns
+- Compute instance sizing with cost-performance trade-offs
+- Caching strategy comparisons
+- Security vs convenience trade-offs
+
+See [trade-off-scenarios.md](trade-off-scenarios.md) for detailed scenarios.
+
+### Decision Matrices
+
+**decision-matrices.md** - Architecture option comparison examples:
+- Database high availability options
+- Caching architecture comparisons
+- Compute platform selection
+- Storage solution comparisons
+- Network architecture options
+
+See [decision-matrices.md](decision-matrices.md) for complete matrices.
 
 ### Learning Mode Examples
 
@@ -101,6 +152,17 @@ See [cloudformation/README.md](cloudformation/README.md) for detailed documentat
 See [cdk/README.md](cdk/README.md) for detailed documentation and setup instructions.
 
 ## Using These Examples
+
+### Mode Selection Examples
+
+1. **Understand the modes**: Read the overview of Simple, Context-Aware, and Full Analysis modes
+2. **Review the scenarios**: See how each mode handles the same infrastructure issue
+3. **Compare outputs**: Understand the differences in depth and detail
+4. **Learn detection rules**: See how automatic mode detection works
+5. **Practice mode selection**: Choose the right mode for your use case
+6. **Optimize costs**: Use the cost comparison to balance thoroughness with budget
+
+When using the AWS Well-Architected Power, Kiro will automatically select the appropriate mode based on context, or you can explicitly request a specific mode.
 
 ### Learning Mode Examples
 
