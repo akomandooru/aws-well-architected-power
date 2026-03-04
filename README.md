@@ -6,32 +6,54 @@
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Kiro Power](https://img.shields.io/badge/Kiro-Power-purple.svg)](https://kiro.ai)
 
+## The Problem This Solves
+
+Your AI code reviewer is smart, but it's not an AWS architect. It might catch bugs, but it can miss critical architecture gaps that could cost you:
+
+- Security vulnerabilities that pass code review (like missing HTTPS enforcement on SNS topics)
+- Reliability issues that only surface in production (single-AZ databases with 99.9% SLA requirements)
+- Cost inefficiencies that compound over time ($180/year per misconfigured resource)
+
+This power gives your AI reviewer an AWS Well-Architected checklist, so it catches what generic reviews miss.
+
+## What You Get
+
+**Without this power:** Generic code review that might miss AWS-specific architecture issues
+
+**With this power:** 
+- Catches security gaps like missing encryption or overly permissive IAM policies
+- Identifies reliability risks like single-AZ deployments in production
+- Spots cost optimization opportunities (right-sizing, lifecycle policies)
+- Explains trade-offs with actual numbers ("Multi-AZ costs $60/month more but prevents $7K/month in downtime")
+
+**Speed:** 3-10 seconds per review depending on depth needed
+
+## Try It in 60 Seconds (No Installation Required)
+
+Want to see it in action first? Ask Kiro to review one of the example files:
+
+**Infrastructure (Terraform):**
+```
+Review the file aws-well-architected-power/examples/terraform/security-issues.tf
+```
+
+**Application Code (Python):**
+```
+Review the file aws-well-architected-power/examples/application-code/python-lambda-issues.py
+```
+
+You'll see it catch security issues, missing error handling, hardcoded secrets, and more - with specific line numbers and fixes.
+
+**Ready to use it on your own code?** See [Installation](#installation) below.
+
 ## Overview
 
 The AWS Well-Architected Framework Review Power transforms how you build AWS infrastructure and applications by bringing context-aware architecture reviews directly into your development workflow. Get the right level of detail for your situation - from fast CI/CD checks to comprehensive trade-off analysis for major decisions.
 
-### Why This Power?
-
-**Traditional Approach:**
-- Wait weeks for formal architecture reviews
-- Get one-size-fits-all recommendations (too slow or too shallow)
-- Discover critical issues late in development
-- Don't understand trade-offs between options
-- Infrastructure and application code reviewed separately
-- No context about your specific requirements
-
-**With This Power:**
-- **Context-aware guidance**: Recommendations adapt to your environment, SLA, budget, and data classification
-- **Choose your review depth**: Fast checks (3s) for CI/CD, balanced reviews (6s) for production, comprehensive analysis (9s) for major decisions
-- **Understand trade-offs**: "Multi-AZ costs 2x but prevents $7K/month in downtime" - specific numbers, not vague advice
-- **Compare options**: Decision matrices showing cost, reliability, performance, and complexity trade-offs
-- **Multi-layer analysis**: Review infrastructure (IaC) and application code together
-- **Automatic mode detection**: CI/CD gets fast checks, production gets context-aware analysis
-
-### What You Can Do
+### Key Capabilities
 
 - 🎯 **Context-Aware Trade-Offs**: Understand what you gain and give up with quantitative data (cost, downtime, performance)
-- ⚡ **Three Review Modes**: Simple (3s), Context-Aware (6s), Full Analysis (9s) - automatically selected or explicitly requested
+- ⚡ **Automatic Review Depth**: Fast checks (3s) for CI/CD, balanced reviews (6s) for production, comprehensive analysis (9s) for major decisions
 - 📋 **IaC Analysis**: Scan Terraform, CloudFormation, and CDK files with line-level feedback
 - 💻 **Application Code Analysis**: Analyze Python, Java, TypeScript, Go, C#, and Ruby code for Well-Architected patterns
 - 🔄 **Multi-Layer Analysis**: Review infrastructure and application code together for comprehensive compliance
@@ -44,134 +66,19 @@ The AWS Well-Architected Framework Review Power transforms how you build AWS inf
 ### Quick Start
 
 ```bash
-# 1. Install the power
-git clone <repository-url> ~/.kiro/powers/aws-well-architected-power
+# 1. Install from Git URL
+# Command Palette → "Powers: Configure" → "Add Custom Power" → "Import from URL"
+# Enter: https://github.com/your-org/aws-well-architected-power
 
-# 2. Restart Kiro
+# 2. Try it immediately
+"Review my infrastructure against AWS Well-Architected best practices"
 
-# 3. Start reviewing
-# Ask Kiro: "Review my infrastructure against AWS Well-Architected best practices"
+# 3. See results in seconds with specific line numbers and fixes
 ```
 
-See [Quick Start Guide](QUICKSTART.md) for detailed setup instructions.
+That's it. The power automatically selects the right review depth for your context.
 
 ## Features
-
-## Features
-
-### ⚡ Review Mode Selection
-
-Choose the right review mode for your needs - optimize for speed, depth, or balance:
-
-| Mode | Speed | Token Usage | Best For | Key Features |
-|------|-------|-------------|----------|--------------|
-| **Simple Mode** | 2.5-6s | 17-25K | CI/CD, quick checks, dev workflow | Prescriptive recommendations, no context questions |
-| **Context-Aware Mode** | 4-8s | 35-50K | Production reviews, interactive sessions | Context gathering, trade-off analysis, conditional guidance |
-| **Full Analysis Mode** | 5-10s | 70-95K | Major architecture decisions | Decision matrices, cost-benefit analysis, comprehensive scenarios |
-
-**Automatic Mode Detection:**
-The power automatically selects the appropriate mode based on:
-- **Environment detection**: CI/CD → Simple, Production files → Context-Aware
-- **File path patterns**: `/dev/` → Simple, `/prod/` or `/staging/` → Context-Aware
-- **User requests**: "quick review" → Simple, "full analysis" → Full Analysis
-- **Session type**: Interactive → Context-Aware, Automated → Simple
-
-**Performance Comparison:**
-
-```
-Simple Mode (CI/CD Pipeline):
-├─ Latency: 2.5-6 seconds
-├─ Token Usage: 17-25K tokens
-├─ Cost per Review: ~$0.90
-└─ Output: Direct issue identification with prescriptive fixes
-
-Context-Aware Mode (Production Review):
-├─ Latency: 4-8 seconds
-├─ Token Usage: 35-50K tokens
-├─ Cost per Review: ~$1.86
-└─ Output: Context questions + conditional recommendations + trade-offs
-
-Full Analysis Mode (Architecture Decision):
-├─ Latency: 5-10 seconds
-├─ Token Usage: 70-95K tokens
-├─ Cost per Review: ~$3.66
-└─ Output: Decision matrices + cost-benefit + multi-pillar impact
-```
-
-**Use Cases by Mode:**
-
-**Simple Mode** - Fast feedback for routine checks:
-- ✅ Pre-commit hooks and CI/CD pipelines
-- ✅ Development environment reviews
-- ✅ Quick validation during active coding
-- ✅ Routine compliance checks
-- ❌ Not for: Production architecture decisions
-
-**Context-Aware Mode** - Balanced analysis with context:
-- ✅ Production and staging environment reviews
-- ✅ Interactive review sessions
-- ✅ When trade-offs need explanation
-- ✅ Environment-specific guidance needed
-- ❌ Not for: Time-critical CI/CD checks
-
-**Full Analysis Mode** - Comprehensive decision support:
-- ✅ Major architecture decisions (database HA, caching strategy)
-- ✅ Multi-option comparisons with cost justification
-- ✅ Architecture review meetings
-- ✅ When quantitative analysis is needed
-- ❌ Not for: Routine checks or CI/CD
-
-**Example: Automatic Mode Detection**
-
-```bash
-# Development file - automatically uses Simple Mode
-"Review infrastructure/dev/lambda.tf"
-→ Simple Mode (3.2s, prescriptive recommendations)
-
-# Production file - automatically uses Context-Aware Mode
-"Review infrastructure/prod/database.tf"
-→ Context-Aware Mode (6.1s, context questions + trade-offs)
-
-# Explicit request - overrides automatic detection
-"Quick review of infrastructure/prod/database.tf"
-→ Simple Mode (3.4s, fast check even for prod file)
-
-# Comprehensive analysis request
-"Full analysis of caching options"
-→ Full Analysis Mode (8.7s, decision matrices + cost-benefit)
-```
-
-**Configuration Options:**
-
-Customize mode behavior in `.kiro/config/well-architected-modes.json`:
-
-```json
-{
-  "defaultMode": "context-aware",
-  "autoDetectMode": true,
-  "modeOverrides": {
-    "development": "simple",
-    "production": "context-aware"
-  },
-  "customDetectionRules": [
-    {
-      "condition": "filePath.includes('critical')",
-      "mode": "context-aware",
-      "priority": 95
-    }
-  ]
-}
-```
-
-**Cost Optimization:**
-- Use Simple Mode for 90% of reviews (routine checks)
-- Use Context-Aware Mode for 9% of reviews (production)
-- Use Full Analysis Mode for 1% of reviews (major decisions)
-- **Result:** 10x cost reduction vs. always using Full Analysis
-
-See [steering/review-mode-selection.md](steering/review-mode-selection.md) for complete mode selection guide and [examples/mode-selection-examples.md](examples/mode-selection-examples.md) for detailed examples.
-
----
 
 ### 🎯 Multi-Pillar Coverage
 
@@ -341,45 +248,35 @@ See [hooks/README.md](hooks/README.md) for installation and customization.
 - ✅ AWS application code (Python, Java, TypeScript, Go, C#, or Ruby) - optional but recommended
 - ✅ Python and uv (for AWS MCP servers - optional, see [uv installation](https://docs.astral.sh/uv/getting-started/installation/))
 - ✅ AWS credentials configured (optional, for MCP server features)
-- ✅ Git (for cloning the repository)
 
-### Step 1: Install the Power
+### Install the Power
 
-**Method 1: Install from Local Folder** (recommended for development/testing):
+**Method 1: Install from Git URL** (recommended):
 
-1. Clone or download the power to your local machine:
+1. In Kiro: Command Palette → "Powers: Configure"
+2. Click "Add Custom Power" → "Import from URL"
+3. Enter: `https://github.com/your-org/aws-well-architected-power`
+4. Kiro will download and install automatically
+
+**Method 2: Install from Local Folder** (for development/testing):
+
+1. Clone the repository:
    ```bash
-   git clone <repository-url> aws-well-architected-power
+   git clone https://github.com/your-org/aws-well-architected-power.git
    ```
+2. In Kiro: Command Palette → "Powers: Configure"
+3. Click "Add Custom Power" → "Import from folder"
+4. Select the `aws-well-architected-power` folder
 
-2. In Kiro, open the Powers panel:
-   - Use Command Palette: "Powers: Configure"
-   - Or ask Kiro to open the powers configuration
-
-3. Click "Add Custom Power"
-
-4. Select "Import from folder"
-
-5. Navigate to and select the `aws-well-architected-power` folder
-
-6. Kiro will install and register the power automatically
-
-**Method 2: Install from URL** (for published powers):
-```
-Use "Add Custom Power" → "Import from URL" → Enter repository URL
-```
-
-### Step 2: Verify Installation
+### Verify Installation
 
 Restart Kiro and verify the power is available:
 
 ```
-Ask Kiro: "List available powers"
+"List available powers"
 ```
 
-You should see "AWS Well-Architected Framework Review" in the list.
-
-### Step 3: Configure AWS MCP Servers (Optional but Recommended)
+You should see "aws-well-architected-power" in the list.
 
 The power works without MCP servers using fallback documentation, but MCP servers provide:
 - ✅ Automated security assessments
@@ -441,7 +338,7 @@ For workspace-level configuration (`.kiro/settings/mcp.json`):
 }
 ```
 
-### Step 4: Optional - Install Hook Templates
+### Configure AWS MCP Servers (Optional but Recommended)
 
 For automated reviews, install hook templates. The hooks are located in the power's `hooks/` directory.
 
@@ -470,7 +367,11 @@ See [hooks/README.md](hooks/README.md) for detailed hook documentation and custo
 
 ### Installation Complete! 🎉
 
-You're ready to start conducting Well-Architected reviews. See the [Quick Start Guide](QUICKSTART.md) for your first review.
+You're ready to start conducting Well-Architected reviews. Try it now:
+
+```
+"Review my infrastructure against AWS Well-Architected best practices"
+```
 
 ## Usage Guide
 
@@ -755,6 +656,118 @@ How to implement:
 Quiz: What is the typical failover time for Multi-AZ RDS? (Answer: 60-120 seconds)
 ```
 
+## Review Mode Selection
+
+Choose the right review mode for your needs - optimize for speed, depth, or balance:
+
+| Mode | Speed | Token Usage | Best For | Key Features |
+|------|-------|-------------|----------|--------------|
+| **Simple Mode** | 2.5-6s | 17-25K | CI/CD, quick checks, dev workflow | Prescriptive recommendations, no context questions |
+| **Context-Aware Mode** | 4-8s | 35-50K | Production reviews, interactive sessions | Context gathering, trade-off analysis, conditional guidance |
+| **Full Analysis Mode** | 5-10s | 70-95K | Major architecture decisions | Decision matrices, cost-benefit analysis, comprehensive scenarios |
+
+**Automatic Mode Detection:**
+The power automatically selects the appropriate mode based on:
+- **Environment detection**: CI/CD → Simple, Production files → Context-Aware
+- **File path patterns**: `/dev/` → Simple, `/prod/` or `/staging/` → Context-Aware
+- **User requests**: "quick review" → Simple, "full analysis" → Full Analysis
+- **Session type**: Interactive → Context-Aware, Automated → Simple
+
+**Performance Comparison:**
+
+```
+Simple Mode (CI/CD Pipeline):
+├─ Latency: 2.5-6 seconds
+├─ Token Usage: 17-25K tokens
+├─ Cost per Review: ~$0.90
+└─ Output: Direct issue identification with prescriptive fixes
+
+Context-Aware Mode (Production Review):
+├─ Latency: 4-8 seconds
+├─ Token Usage: 35-50K tokens
+├─ Cost per Review: ~$1.86
+└─ Output: Context questions + conditional recommendations + trade-offs
+
+Full Analysis Mode (Architecture Decision):
+├─ Latency: 5-10 seconds
+├─ Token Usage: 70-95K tokens
+├─ Cost per Review: ~$3.66
+└─ Output: Decision matrices + cost-benefit + multi-pillar impact
+```
+
+**Use Cases by Mode:**
+
+**Simple Mode** - Fast feedback for routine checks:
+- ✅ Pre-commit hooks and CI/CD pipelines
+- ✅ Development environment reviews
+- ✅ Quick validation during active coding
+- ✅ Routine compliance checks
+- ❌ Not for: Production architecture decisions
+
+**Context-Aware Mode** - Balanced analysis with context:
+- ✅ Production and staging environment reviews
+- ✅ Interactive review sessions
+- ✅ When trade-offs need explanation
+- ✅ Environment-specific guidance needed
+- ❌ Not for: Time-critical CI/CD checks
+
+**Full Analysis Mode** - Comprehensive decision support:
+- ✅ Major architecture decisions (database HA, caching strategy)
+- ✅ Multi-option comparisons with cost justification
+- ✅ Architecture review meetings
+- ✅ When quantitative analysis is needed
+- ❌ Not for: Routine checks or CI/CD
+
+**Example: Automatic Mode Detection**
+
+```bash
+# Development file - automatically uses Simple Mode
+"Review infrastructure/dev/lambda.tf"
+→ Simple Mode (3.2s, prescriptive recommendations)
+
+# Production file - automatically uses Context-Aware Mode
+"Review infrastructure/prod/database.tf"
+→ Context-Aware Mode (6.1s, context questions + trade-offs)
+
+# Explicit request - overrides automatic detection
+"Quick review of infrastructure/prod/database.tf"
+→ Simple Mode (3.4s, fast check even for prod file)
+
+# Comprehensive analysis request
+"Full analysis of caching options"
+→ Full Analysis Mode (8.7s, decision matrices + cost-benefit)
+```
+
+**Configuration Options:**
+
+Customize mode behavior in `.kiro/config/well-architected-modes.json`:
+
+```json
+{
+  "defaultMode": "context-aware",
+  "autoDetectMode": true,
+  "modeOverrides": {
+    "development": "simple",
+    "production": "context-aware"
+  },
+  "customDetectionRules": [
+    {
+      "condition": "filePath.includes('critical')",
+      "mode": "context-aware",
+      "priority": 95
+    }
+  ]
+}
+```
+
+**Cost Optimization:**
+- Use Simple Mode for 90% of reviews (routine checks)
+- Use Context-Aware Mode for 9% of reviews (production)
+- Use Full Analysis Mode for 1% of reviews (major decisions)
+- **Result:** 10x cost reduction vs. always using Full Analysis
+
+See [steering/review-mode-selection.md](steering/review-mode-selection.md) for complete mode selection guide and [examples/mode-selection-examples.md](examples/mode-selection-examples.md) for detailed examples.
+
 ## File Patterns and Recognition
 
 The power automatically recognizes these file patterns for proactive reviews:
@@ -805,7 +818,6 @@ The power automatically recognizes these file patterns for proactive reviews:
 ### Power Documentation
 
 - **[POWER.md](POWER.md)** - Complete power documentation with overview, MCP integration, and usage
-- **[QUICKSTART.md](QUICKSTART.md)** - Get started in under 5 minutes
 - **[mcp.json](mcp.json)** - MCP server configuration reference
 
 ### Pillar-Specific Guidance
@@ -1121,7 +1133,6 @@ If you're still experiencing issues:
 
 1. **Check Documentation**:
    - [POWER.md](POWER.md) - Complete power documentation
-   - [QUICKSTART.md](QUICKSTART.md) - Quick start guide
    - [hooks/README.md](hooks/README.md) - Hook troubleshooting
    - [examples/README.md](examples/README.md) - Usage examples
 
@@ -1727,7 +1738,6 @@ See respective package documentation for license details.
 ### Getting Help
 
 1. **Documentation**
-   - Start with [QUICKSTART.md](QUICKSTART.md) for quick setup
    - Review [POWER.md](POWER.md) for complete documentation
    - Check [hooks/README.md](hooks/README.md) for hook troubleshooting
    - See [examples/README.md](examples/README.md) for usage examples
@@ -1805,7 +1815,6 @@ We welcome feature requests! Please include:
 
 **Documentation:**
 - ✅ Complete POWER.md with overview and usage
-- ✅ Quick start guide (QUICKSTART.md)
 - ✅ Pillar-specific steering files (6 pillars)
 - ✅ Workflow guidance (proactive reviews, code generation)
 - ✅ Hook templates with detailed README
@@ -1916,16 +1925,4 @@ mv ~/.kiro/hooks/aws-waf-file-save.md.disabled ~/.kiro/hooks/aws-waf-file-save.m
 
 ---
 
-## Project Information
-
-**Version**: 1.0.0  
-**Last Updated**: 2024  
-**Maintained By**: Kiro Community  
-**License**: MIT  
-**Repository**: <repository-url>  
-**Documentation**: [POWER.md](POWER.md) | [QUICKSTART.md](QUICKSTART.md)  
-**Support**: Open an issue or contact Kiro support
-
----
-
-**Ready to build better AWS infrastructure?** Start with the [Quick Start Guide](QUICKSTART.md) and conduct your first Well-Architected review in under 5 minutes! 🚀
+**Ready to build better AWS infrastructure?** Install the power and start your first review in under 3 minutes! 🚀
