@@ -2,9 +2,9 @@
 
 > Context-aware architecture reviews with trade-off analysis. Choose your depth — quick checks, balanced reviews, or comprehensive analysis.
 
-[![Version](https://img.shields.io/badge/version-2.0.0-blue.svg)](https://github.com/your-org/aws-well-architected-power)
+[![Version](https://img.shields.io/badge/version-2.0.0-blue.svg)](https://github.com/akomandooru/aws-well-architected-power)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
-[![Kiro Power](https://img.shields.io/badge/Kiro-Power-purple.svg)](https://kiro.ai)
+[![Kiro Power](https://img.shields.io/badge/Kiro-Power-purple.svg)](https://kiro.dev/)
 
 ## The Problem This Solves
 
@@ -73,7 +73,7 @@ You should see "aws-well-architected-power" in the list. Try it:
 
 The validation hook and example files are not included when installing via Kiro — they're only available in the cloned repo.
 
-1. Clone: `git clone https://github.com/your-org/aws-well-architected-power.git`
+1. Clone: `git clone https://github.com/akomandooru/aws-well-architected-power.git`
 2. Open the cloned repo folder in Kiro as your workspace
 3. Install the power via Command Palette → "Powers: Configure"
 4. Copy `hooks/validate-examples.md` JSON config into a `.kiro.hook` file in `.kiro/hooks/` (must be workspace-level since it references files in this repo)
@@ -283,5 +283,6 @@ The `examples/` directory is only available in the cloned repo. It includes:
 ---
 
 **Ready to build better AWS infrastructure?** Install the power and start your first review in under 3 minutes! 🚀
+
 
 
