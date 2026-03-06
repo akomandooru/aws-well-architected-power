@@ -282,7 +282,8 @@ The `examples/` directory is only available in the cloned repo. It includes:
 
 ---
 
-**Ready to build better AWS infrastructure?** Install the power and start your first review in under 3 minutes! 🚀
+**Ready to catch what generic reviews miss?** Install the power and start your first review in under 3 minutes! 🚀
+
 
 
 
