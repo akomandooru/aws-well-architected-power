@@ -50,7 +50,7 @@ This power gives your AI reviewer an AWS Well-Architected checklist, so it catch
 
 **From Local Folder** (for development/testing):
 
-1. Clone: `git clone https://github.com/your-org/aws-well-architected-power.git`
+1. Clone: `git clone https://github.com/akomandooru/aws-well-architected-power.git`
 2. In Kiro: Command Palette → "Powers: Configure"
 3. Click "Add Custom Power" → "Import from folder"
 4. Select the `aws-well-architected-power` folder
@@ -283,3 +283,4 @@ The `examples/` directory is only available in the cloned repo. It includes:
 ---
 
 **Ready to build better AWS infrastructure?** Install the power and start your first review in under 3 minutes! 🚀
+
