@@ -5,6 +5,47 @@ All notable changes to the AWS Well-Architected Power will be documented in this
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.0] - TBD
+
+### Changed - Steering Files Optimization
+
+Major reduction in steering file size and addition of conditional inclusion for better performance.
+
+#### Conditional Inclusion
+- All 11 steering files now use `inclusion: fileMatch` front matter
+- Files only load when relevant file types are open (IaC, application code)
+- Prevents loading ~25K lines of guidance into every conversation
+
+#### File Consolidation
+- Merged 5 standalone application code files into their parent pillar files
+- Reduced from 17 steering files to 11 (removed `security-application-code.md`, `reliability-application-code.md`, `cost-optimization-application-code.md`, `operational-excellence-application-code.md`, `performance-application-code.md`)
+
+#### Content Optimization
+- Trimmed pillar files from ~2,500-3,300 lines each to ~95-150 lines (checklists + key patterns + anti-pattern tables)
+- Trimmed utility files (context-questions, trade-off-guidance, review-mode-selection, proactive-review, code-generation-guidance) to essentials
+- Moved full code templates to `examples/` directory (steering files now reference examples)
+- Total steering: 1,095 lines (down from ~25,000 — 96% reduction)
+
+#### Examples Optimization
+- Trimmed `mode-selection-examples.md` from 1,549 to 123 lines (one scenario across all 3 modes, auto-detection table, comparison)
+- Trimmed `trade-off-scenarios.md` from 1,179 to 116 lines (all 6 scenarios as compact tables with key trade-offs)
+- Trimmed `decision-matrices.md` from 931 to 131 lines (all 6 matrices as tables with decision rules)
+- Trimmed `examples/README.md` from 221 to 39 lines (removed duplicated expected findings)
+- Total examples: 8,101 lines (down from ~11,600 — 30% reduction)
+- IaC example files (.tf, .yaml, .ts, .py, .java) unchanged
+
+#### Hooks Optimization
+- Trimmed `hooks/file-save.md` from 270 to ~45 lines (essential config + customization only)
+- Trimmed `hooks/post-generation.md` from 432 to ~35 lines
+- Trimmed `hooks/pre-deployment.md` from 370 to ~35 lines
+- Trimmed `hooks/README.md` from 414 to ~30 lines
+- Removed bloated use cases, troubleshooting, and best practices filler
+- Total hooks: ~145 lines (down from ~1,486 — 90% reduction)
+
+#### POWER.md Optimization
+- Trimmed POWER.md from 1,045 to ~120 lines
+- Consolidated into essential sections: overview, review modes, MCP servers, file types, steering files, hooks, examples, getting started
+
 ## [2.0.0] - TBD
 
 ### Added - Context-Aware Trade-Off Guidance
@@ -60,9 +101,8 @@ This major release transforms the power from prescriptive guidance to context-aw
 - `steering/trade-off-guidance.md`: Trade-off analysis framework
 - `examples/decision-matrices.md`: 6 comprehensive decision matrices
 - `examples/trade-off-scenarios.md`: 8 detailed real-world scenarios
-- Updated QUICKSTART.md with context-aware review examples
+- Updated README.md with context-aware review examples
 - Updated README.md highlighting trade-off capabilities
-- Updated TESTING.md with trade-off guidance testing procedures
 
 ### Changed
 - **Recommendations are now context-aware**: Same infrastructure reviewed differently based on environment, SLA, budget, and data classification

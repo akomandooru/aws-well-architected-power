@@ -1,0 +1,96 @@
+{
+  "description": "Expected findings for each example file. Used by the validate-examples hook to verify the power catches known issues.",
+  "testCases": [
+    {
+      "file": "examples/terraform/security-issues.tf",
+      "pillar": "Security",
+      "expectedFindings": [
+        "unencrypted S3",
+        "overly permissive IAM",
+        "unrestricted security group",
+        "unencrypted EBS",
+        "publicly accessible RDS",
+        "SSH open to world",
+        "unencrypted CloudWatch Logs",
+        "Lambda with admin access"
+      ],
+      "minFindings": 5
+    },
+    {
+      "file": "examples/cloudformation/reliability-issues.yaml",
+      "pillar": "Reliability",
+      "expectedFindings": [
+        "single-AZ",
+        "no automated backups",
+        "no health check",
+        "no auto scaling",
+        "S3 without versioning",
+        "Lambda without dead letter queue",
+        "DynamoDB without point-in-time recovery",
+        "ECS without auto scaling"
+      ],
+      "minFindings": 5
+    },
+    {
+      "file": "examples/cdk/cost-optimization-issues.ts",
+      "pillar": "Cost Optimization",
+      "expectedFindings": [
+        "over-provisioned",
+        "no auto scaling",
+        "no lifecycle policy",
+        "always-on development",
+        "missing cost allocation tags",
+        "over-provisioned ElastiCache",
+        "NAT Gateway in every AZ",
+        "no reserved capacity",
+        "no CloudWatch Logs retention"
+      ],
+      "minFindings": 5
+    },
+    {
+      "file": "examples/application-code/python-lambda-issues.py",
+      "pillar": "Security, Reliability, Performance, Operational Excellence",
+      "expectedFindings": [
+        "hardcoded credentials",
+        "no error handling",
+        "no retry logic",
+        "no timeout",
+        "no logging",
+        "no metrics",
+        "inefficient database queries",
+        "no connection pooling"
+      ],
+      "minFindings": 4
+    },
+    {
+      "file": "examples/application-code/java-service-issues.java",
+      "pillar": "Security, Reliability, Performance",
+      "expectedFindings": [
+        "hardcoded credentials",
+        "no error handling",
+        "no retry",
+        "no timeout",
+        "no logging",
+        "resource leak",
+        "synchronous blocking",
+        "SQL injection"
+      ],
+      "minFindings": 4
+    },
+    {
+      "file": "examples/application-code/typescript-api-issues.ts",
+      "pillar": "Security, Reliability, Performance, Operational Excellence",
+      "expectedFindings": [
+        "hardcoded API key",
+        "no error handling",
+        "no retry",
+        "no timeout",
+        "no logging",
+        "no health check",
+        "no caching",
+        "no authentication"
+      ],
+      "minFindings": 4
+    }
+  ]
+}

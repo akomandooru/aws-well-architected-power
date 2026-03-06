@@ -163,9 +163,10 @@ When adding new examples:
 
 ## Related Documentation
 
-- [Security Application Code Patterns](../../steering/security-application-code.md)
-- [Reliability Application Code Patterns](../../steering/reliability-application-code.md)
-- [Performance Application Code Patterns](../../steering/performance-application-code.md)
-- [Cost Optimization Application Code Patterns](../../steering/cost-optimization-application-code.md)
-- [Operational Excellence Application Code Patterns](../../steering/operational-excellence-application-code.md)
+- [Security Pillar](../../steering/security.md) (includes application code security checklist)
+- [Reliability Pillar](../../steering/reliability.md) (includes retry, timeout, circuit breaker checklist)
+- [Performance Pillar](../../steering/performance.md) (includes caching, connection pooling checklist)
+- [Cost Optimization Pillar](../../steering/cost-optimization.md) (includes efficient operations checklist)
+- [Operational Excellence Pillar](../../steering/operational-excellence.md) (includes logging, tracing checklist)
+
 

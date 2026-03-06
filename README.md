@@ -69,6 +69,16 @@ You should see "aws-well-architected-power" in the list. Try it:
 "Review my infrastructure against AWS Well-Architected best practices"
 ```
 
+### Run the Validation Suite (Optional)
+
+To verify the power catches real issues, install the validation hook:
+
+1. Copy `hooks/validate-examples.md` to `~/.kiro/hooks/` or `.kiro/hooks/`
+2. Open the Agent Hooks panel in Kiro
+3. Click the trigger button next to "Validate Well-Architected Examples"
+
+It reviews all 6 example `-issues` files (Terraform, CloudFormation, CDK, Python, Java, TypeScript) and reports which expected findings were detected. See [examples/test-manifest.json](examples/test-manifest.json) for the test cases.
+
 ### MCP Servers (Optional)
 
 The power works fully without MCP servers. Enabling them adds automated security assessments and real-time AWS documentation access.
@@ -229,6 +239,7 @@ Pre-configured hooks for continuous compliance:
 | **File-Save** | When IaC files are saved | Immediate feedback during development |
 | **Pre-Deployment** | Before `terraform apply`, `cdk deploy` | Final validation before changes |
 | **Post-Generation** | After Kiro generates code | Ensure AI-generated code is production-ready |
+| **Validate Examples** | Manual trigger | Verify the power catches expected issues across all 6 example files |
 
 Install by copying from the power's `hooks/` directory to `~/.kiro/hooks/` or `.kiro/hooks/`. See [hooks/README.md](hooks/README.md) for details.
 
