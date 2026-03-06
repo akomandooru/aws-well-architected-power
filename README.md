@@ -46,7 +46,7 @@ This power gives your AI reviewer an AWS Well-Architected checklist, so it catch
 
 1. In Kiro: Command Palette → "Powers: Configure"
 2. Click "Add Custom Power" → "Import from URL"
-3. Enter: `https://github.com/your-org/aws-well-architected-power`
+3. Enter: `https://github.com/akomandooru/aws-well-architected-power`
 
 **From Local Folder** (for development/testing):
 
@@ -283,4 +283,5 @@ The `examples/` directory is only available in the cloned repo. It includes:
 ---
 
 **Ready to build better AWS infrastructure?** Install the power and start your first review in under 3 minutes! 🚀
+
 
