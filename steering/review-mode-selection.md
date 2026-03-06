@@ -7,19 +7,19 @@ fileMatchPattern: "**/*.tf,**/*.tfvars,**/*.yaml,**/*.yml,**/*.json,**/*.ts,**/*
 
 ## Three Review Modes
 
-### Simple Mode (2.5-6s)
+### Simple Mode (Fastest)
 - **Approach**: Prescriptive checks against Well-Architected best practices
 - **No** context questions, trade-off analysis, or decision matrices
 - **Output**: Direct violations with risk level, location, and remediation
 - **Trigger**: "quick review", dev files, CI/CD context, pre-commit
 
-### Context-Aware Mode (4-8s)
+### Context-Aware Mode (Moderate)
 - **Approach**: Conditional guidance based on gathered context
 - **Asks** about environment, SLA, budget, data classification
 - **Output**: Context-specific recommendations with trade-off explanations
 - **Trigger**: Production files, interactive sessions, "review for production"
 
-### Full Analysis Mode (5-10s)
+### Full Analysis Mode (Most Thorough)
 - **Approach**: Comprehensive analysis with decision matrices and ROI
 - **Loads** trade-off scenarios, decision matrices, cost-benefit analysis
 - **Output**: Pillar scores, priority-ranked actions, decision matrices, cost summaries

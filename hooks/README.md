@@ -13,17 +13,19 @@ Pre-configured hooks that automate Well-Architected reviews during development.
 
 ## Installation
 
-Copy the hook file to your Kiro hooks directory:
+Copy the JSON configuration block from any hook file into a `.kiro.hook` file in your Kiro hooks directory:
 
 ```bash
 # User-level (all projects)
-cp aws-well-architected-power/hooks/<hook-file>.md ~/.kiro/hooks/
+~/.kiro/hooks/<hook-name>.kiro.hook
 
 # Workspace-level (current project only)
-cp aws-well-architected-power/hooks/<hook-file>.md .kiro/hooks/
+.kiro/hooks/<hook-name>.kiro.hook
 ```
 
-Hooks activate automatically after installation. Restart Kiro if needed.
+> **Note:** Hook files must use the `.kiro.hook` extension to be recognized by Kiro. The `.md` files in this directory are documentation templates — copy the JSON config block from each into a new `.kiro.hook` file.
+
+Hooks activate automatically after installation. Reload the window if needed.
 
 ## Customization
 

@@ -18,13 +18,17 @@ Automatically reviews IaC files against Well-Architected best practices when sav
 
 ## Installation
 
+Copy the JSON configuration block above into a `.kiro.hook` file:
+
 ```bash
 # User-level (all projects)
-cp aws-well-architected-power/hooks/file-save.md ~/.kiro/hooks/aws-waf-file-save.md
+~/.kiro/hooks/aws-waf-file-save.kiro.hook
 
 # Workspace-level (current project only)
-cp aws-well-architected-power/hooks/file-save.md .kiro/hooks/aws-waf-file-save.md
+.kiro/hooks/aws-waf-file-save.kiro.hook
 ```
+
+> **Note:** The file must use the `.kiro.hook` extension to be recognized by Kiro.
 
 ## Customization
 

@@ -18,13 +18,17 @@ Performs a Well-Architected review before `terraform apply` or `cdk deploy` exec
 
 ## Installation
 
+Copy the JSON configuration block above into a `.kiro.hook` file:
+
 ```bash
 # User-level (all projects)
-cp aws-well-architected-power/hooks/pre-deployment.md ~/.kiro/hooks/aws-waf-pre-deployment.md
+~/.kiro/hooks/aws-waf-pre-deployment.kiro.hook
 
 # Workspace-level (current project only)
-cp aws-well-architected-power/hooks/pre-deployment.md .kiro/hooks/aws-waf-pre-deployment.md
+.kiro/hooks/aws-waf-pre-deployment.kiro.hook
 ```
+
+> **Note:** The file must use the `.kiro.hook` extension to be recognized by Kiro.
 
 ## When It Triggers
 

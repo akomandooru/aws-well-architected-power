@@ -28,7 +28,7 @@ resource "aws_lambda_function" "api_handler" {
 
 ---
 
-## Simple Mode Output (~3s)
+## Simple Mode Output (Fastest)
 
 ```
 ❌ HIGH RISK: Hardcoded API key in environment variables
@@ -50,7 +50,7 @@ Characteristics: Fast, prescriptive, no context questions, no trade-offs.
 
 ---
 
-## Context-Aware Mode Output (~6s)
+## Context-Aware Mode Output (Moderate)
 
 ```
 📋 Context Questions:
@@ -75,7 +75,7 @@ Characteristics: Gathers context, conditional recommendations, trade-off explana
 
 ---
 
-## Full Analysis Mode Output (~9s)
+## Full Analysis Mode Output (Most Thorough)
 
 ```
 📊 DECISION MATRIX: Lambda Configuration Options
@@ -162,7 +162,7 @@ Context is preserved across mode switches — findings, file references, and gat
 
 | Aspect | Simple | Context-Aware | Full Analysis |
 |--------|--------|---------------|---------------|
-| Speed | 2.5-6s | 4-8s | 5-10s |
+| Speed | Fastest | Moderate | Most thorough |
 | Context questions | None | 3-5 | 8-10 |
 | Trade-off analysis | No | Yes | Comprehensive |
 | Decision matrices | No | No | Yes |

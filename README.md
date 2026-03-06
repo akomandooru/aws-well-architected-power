@@ -1,6 +1,6 @@
 # AWS Well-Architected Framework Review Power
 
-> Context-aware architecture reviews with trade-off analysis. Choose your depth — quick checks (3s), balanced reviews (6s), or comprehensive analysis (9s).
+> Context-aware architecture reviews with trade-off analysis. Choose your depth — quick checks, balanced reviews, or comprehensive analysis.
 
 [![Version](https://img.shields.io/badge/version-2.0.0-blue.svg)](https://github.com/your-org/aws-well-architected-power)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
@@ -26,7 +26,7 @@ This power gives your AI reviewer an AWS Well-Architected checklist, so it catch
 - Spots cost optimization opportunities (right-sizing, lifecycle policies)
 - Explains trade-offs with actual numbers ("Multi-AZ costs $60/month more but prevents $7K/month in downtime")
 
-**Speed:** 3-10 seconds per review depending on depth needed
+**Speed:** Seconds per review depending on depth needed
 
 ### Key Capabilities
 
@@ -69,15 +69,17 @@ You should see "aws-well-architected-power" in the list. Try it:
 "Review my infrastructure against AWS Well-Architected best practices"
 ```
 
-### Run the Validation Suite (Optional)
+### Run the Validation Suite (Requires Repo Clone)
 
-To verify the power catches real issues, install the validation hook:
+The validation hook and example files are not included when installing via Kiro — they're only available in the cloned repo.
 
-1. Copy `hooks/validate-examples.md` to `~/.kiro/hooks/` or `.kiro/hooks/`
-2. Open the Agent Hooks panel in Kiro
-3. Click the trigger button next to "Validate Well-Architected Examples"
+1. Clone: `git clone https://github.com/your-org/aws-well-architected-power.git`
+2. Open the cloned repo folder in Kiro as your workspace
+3. Install the power via Command Palette → "Powers: Configure"
+4. Copy `hooks/validate-examples.md` JSON config into a `.kiro.hook` file in `.kiro/hooks/` (must be workspace-level since it references files in this repo)
+5. Open the Agent Hooks panel and click the trigger button next to "Validate Well-Architected Examples"
 
-It reviews all 6 example `-issues` files (Terraform, CloudFormation, CDK, Python, Java, TypeScript) and reports which expected findings were detected. See [examples/test-manifest.json](examples/test-manifest.json) for the test cases.
+The hook reviews all 6 example `-issues` files (Terraform, CloudFormation, CDK, Python, Java, TypeScript) and reports which expected findings were detected. See [examples/test-manifest.json](examples/test-manifest.json) for the test cases.
 
 ### MCP Servers (Optional)
 
@@ -218,9 +220,9 @@ The power automatically selects the right mode, or you can request one explicitl
 
 | Mode | Speed | Best For | Trigger |
 |------|-------|----------|---------|
-| **Simple** | 2.5-6s | CI/CD, quick checks, dev workflow | "quick review", dev files, CI/CD |
-| **Context-Aware** | 4-8s | Production reviews, interactive sessions | prod files, interactive |
-| **Full Analysis** | 5-10s | Major architecture decisions | "full analysis", explicit request |
+| **Simple** | Fastest | CI/CD, quick checks, dev workflow | "quick review", dev files, CI/CD |
+| **Context-Aware** | Moderate | Production reviews, interactive sessions | prod files, interactive |
+| **Full Analysis** | Most thorough | Major architecture decisions | "full analysis", explicit request |
 
 ```bash
 "Quick review of this Lambda config"          # → Simple Mode
@@ -230,9 +232,9 @@ The power automatically selects the right mode, or you can request one explicitl
 
 See [steering/review-mode-selection.md](steering/review-mode-selection.md) for details.
 
-## Optional: Automation Hooks
+## Optional: Automation Hooks (Requires Repo Clone)
 
-Pre-configured hooks for continuous compliance:
+Pre-configured hooks for continuous compliance. These are only available in the cloned repo, not when installing the power via Kiro.
 
 | Hook | Trigger | Use Case |
 |------|---------|----------|
@@ -241,7 +243,13 @@ Pre-configured hooks for continuous compliance:
 | **Post-Generation** | After Kiro generates code | Ensure AI-generated code is production-ready |
 | **Validate Examples** | Manual trigger | Verify the power catches expected issues across all 6 example files |
 
-Install by copying from the power's `hooks/` directory to `~/.kiro/hooks/` or `.kiro/hooks/`. See [hooks/README.md](hooks/README.md) for details.
+Install by copying the JSON config from the repo's `hooks/` directory into a `.kiro.hook` file:
+- `.kiro/hooks/` — workspace-level (this project only)
+- `~/.kiro/hooks/` — user-level (all projects)
+
+The validate-examples hook must be workspace-level since it references example files in this repo.
+
+See [hooks/README.md](hooks/README.md) for details.
 
 ## Troubleshooting
 
@@ -249,13 +257,13 @@ Install by copying from the power's `hooks/` directory to `~/.kiro/hooks/` or `.
 
 **MCP servers not available:** The power works without them. To enable, check your MCP config and ensure `uv` is installed. See [MCP Servers](#mcp-servers-optional) above.
 
-**No issues found:** Your code may already follow best practices. Try the example files to verify: `"Review the file aws-well-architected-power/examples/terraform/security-issues.tf"`
+**No issues found:** Your code may already follow best practices. Try the example files to verify: `"Review the file examples/terraform/security-issues.tf"`
 
 **Wrong review mode:** Use explicit keywords — "quick review" for Simple, "full analysis" for Full Analysis. The power auto-detects based on file paths and context.
 
-## Examples
+## Examples (Requires Repo Clone)
 
-The `examples/` directory includes:
+The `examples/` directory is only available in the cloned repo. It includes:
 
 - **Terraform** (`examples/terraform/`) — Security issues and fixes
 - **CloudFormation** (`examples/cloudformation/`) — Reliability issues and fixes

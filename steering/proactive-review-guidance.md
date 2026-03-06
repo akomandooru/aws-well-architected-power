@@ -1,7 +1,4 @@
----
-inclusion: fileMatch
-fileMatchPattern: "**/*.tf,**/*.tfvars,**/*.yaml,**/*.yml,**/*.json,**/cdk.json,**/architecture.md,**/ARCHITECTURE.md,**/ADR-*.md"
----
+
 
 # Proactive Review Guidance
 

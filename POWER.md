@@ -1,7 +1,7 @@
 ---
 name: aws-well-architected-power
 displayName: AWS Well-Architected Review
-description: Context-aware architecture reviews with trade-off analysis. Choose your depth - quick checks (3s), balanced reviews (6s), or comprehensive analysis (9s). Analyzes IaC and application code across all six pillars with quantitative cost-benefit guidance.
+description: Context-aware architecture reviews with trade-off analysis. Choose your depth — quick checks, balanced reviews, or comprehensive analysis. Analyzes IaC and application code across all six pillars with quantitative cost-benefit guidance.
 keywords: aws, well-architected, security, reliability, performance, cost, operational excellence, sustainability, infrastructure, iac, terraform, cloudformation, cdk, architecture review, best practices, trade-offs, context-aware, mode selection
 author: Anand Komandooru
 ---
@@ -15,7 +15,7 @@ Continuous, context-aware Well-Architected reviews during development. Fast pres
 - Reviews IaC (Terraform, CloudFormation, CDK) and application code (Python, Java, TypeScript, Go, C#, Ruby) against all six Well-Architected pillars
 - Gathers context (environment, SLA, budget, data classification) before recommending
 - Provides quantitative trade-offs: "$73/month for Multi-AZ, 99% → 99.95% availability"
-- Three review modes: Simple (3s), Context-Aware (6s), Full Analysis (9s) — auto-detected
+- Three review modes: Simple, Context-Aware, Full Analysis — auto-detected
 - Decision matrices for comparing architecture options
 - Complete code examples for every recommendation
 
@@ -23,9 +23,9 @@ Continuous, context-aware Well-Architected reviews during development. Fast pres
 
 | Mode | Speed | Best For | Trigger |
 |------|-------|----------|---------|
-| Simple | 2.5-6s | CI/CD, quick checks, dev | "quick review", dev files, CI=true |
-| Context-Aware | 4-8s | Production reviews, interactive | prod files, interactive sessions |
-| Full Analysis | 5-10s | Major architecture decisions | "full analysis", explicit request |
+| Simple | Fastest | CI/CD, quick checks, dev | "quick review", dev files, CI=true |
+| Context-Aware | Moderate | Production reviews, interactive | prod files, interactive sessions |
+| Full Analysis | Most thorough | Major architecture decisions | "full analysis", explicit request |
 
 Auto-detection priority: explicit user request > CI/CD environment > file path > session type.
 Modes can escalate mid-session (Simple → Context-Aware → Full Analysis) with context preserved.
@@ -95,34 +95,10 @@ See `steering/context-questions.md` and `steering/trade-off-guidance.md`.
 | `context-questions.md` | Context gathering templates | IaC and application code files |
 | `trade-off-guidance.md` | Trade-off analysis framework | IaC and application code files |
 | `review-mode-selection.md` | Mode auto-detection rules | IaC and application code files |
-| `proactive-review-guidance.md` | When to suggest reviews | IaC and application code files |
+| `proactive-review-guidance.md` | When to suggest reviews | Always |
 | `code-generation-guidance.md` | Well-Architected code generation | IaC and application code files |
 
-All steering files use conditional inclusion (`fileMatch`) — they only load when relevant file types are open.
-
-## Hook Templates
-
-Pre-configured hooks in the `hooks/` directory:
-
-| Hook | Trigger | Use Case |
-|------|---------|----------|
-| `file-save.md` | Save IaC files | Immediate feedback during development |
-| `pre-deployment.md` | Before `terraform apply` / `cdk deploy` | Final safety check |
-| `post-generation.md` | After Kiro generates IaC code | Validate AI-generated code |
-| `validate-examples.md` | Manual trigger | Verify the power works against all 6 example files |
-
-Copy to `~/.kiro/hooks/` (user-level) or `.kiro/hooks/` (workspace-level) to activate.
-
-## Example Resources
-
-The `examples/` directory includes test fixtures and reference material:
-
-- **IaC examples**: Terraform, CloudFormation, CDK files with issues and fixes
-- **Application code**: Python, Java, TypeScript with issues and fixes
-- **Decision matrices**: 6 matrices for common architecture choices
-- **Trade-off scenarios**: 6 real-world scenarios from startup to enterprise
-- **Review workflows**: Complete review sessions and report formats
-- **Learning examples**: Detailed explanations for each pillar
+Only `proactive-review-guidance.md` (~50 lines) is always loaded — it enables Kiro to recognize review opportunities. All other files use conditional inclusion (`fileMatch`) and load when relevant code files enter context.
 
 ## Getting Started
 
