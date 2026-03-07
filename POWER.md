@@ -107,3 +107,22 @@ Only `proactive-review-guidance.md` (~50 lines) is always loaded — it enables 
 3. Ask: "Review this file against AWS Well-Architected best practices"
 
 The power auto-selects review depth. Use "quick review" for fast checks or "full analysis" for comprehensive guidance.
+
+
+## License and Support
+
+This power integrates with two optional MCP servers from AWS Labs:
+
+### AWS Well-Architected Security Assessment MCP Server
+- **License**: Apache-2.0
+- **Repository**: [awslabs/mcp](https://github.com/awslabs/mcp)
+- **Privacy Policy**: [AWS Privacy Notice](https://aws.amazon.com/privacy/)
+- **Support**: [GitHub Issues](https://github.com/awslabs/mcp/issues)
+
+### AWS Documentation MCP Server
+- **License**: Apache-2.0
+- **Repository**: [awslabs/mcp](https://github.com/awslabs/mcp)
+- **Privacy Policy**: [AWS Privacy Notice](https://aws.amazon.com/privacy/)
+- **Support**: [GitHub Issues](https://github.com/awslabs/mcp/issues)
+
+Both servers are part of the official AWS Labs MCP server collection and are optional — this power works fully without them using steering file guidance.
